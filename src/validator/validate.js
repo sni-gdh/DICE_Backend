@@ -17,13 +17,13 @@ import { ApiError } from "../utils/ApiError.js";
 
 export const validate = (req,res,next)=>{
     const error = validationResult(req);
-    if(!error.isEmpty())
+    if(error.isEmpty())
     {
         return next();
     }
     const extractedErrors = []
-    error.array().map((err)=>extractedErrors.push({[err.path] : err.message}));
-
+    error.array().map((err)=>extractedErrors.push({[err.param] : err.msg}));
+    console.log("Validate Error",extractedErrors);
       // 422: Unprocessable Entity
     throw new ApiError(422,"Recieved data is not valid",extractedErrors);
 };

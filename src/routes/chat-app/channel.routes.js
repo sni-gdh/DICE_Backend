@@ -1,64 +1,68 @@
 import { Router } from "express";
 import {
-    SerarchAvailableUsers,
-    createChannel,
-    getChannelDetails,
-    renameChannel,
-    deleteChannel,
-    leaveChannel,
-    addNewParticipantinChannel,
-    removeParticipantFromChannel,
-    getAllChannel
+  searchAvailableUsers,
+  createChannel,
+  getChannelDetails,
+  renameChannel,
+  deleteChannel,
+  leaveChannel,
+  addNewParticipantinChannel,
+  removeParticipantFromChannel,
+  getAllChannel
 } from "../../controllers/chatapp/channel.controllers.js";
 import { verifyJWT } from "../../middleware/auth.middleware.js";
 import {
   createAGroupChatValidator,
   updateGroupChatNameValidator,
+  ParticipnatValidator
 } from "../../validator/chatapp/chat.validators.js";
-import { mongoIdPathVariableValidator } from "../../validator/common/db.validators.js";
-import { validate } from "../../validator/validate";
-
+import {PostgresPathVariableValidator } from "../../validator/common/db.validators.js";
+import { validate } from "../../validator/validate.js";
+import {upload} from "../../middleware/multer.middleware.js"
 const router = Router();
 
 router.use(verifyJWT);
 
-router.route("/").get(getAllChannel);
+router.route("/:serverId").get(PostgresPathVariableValidator("serverId"),validate,getAllChannel);
 
-router.route("/users").get(SerarchAvailableUsers);
+router.route("/:serverId/:channelId/users").get(PostgresPathVariableValidator("serverId"),PostgresPathVariableValidator("channelId"),validate,searchAvailableUsers);
 
-
-router
-  .route("/channel")
-  .post(createAGroupChatValidator(), validate, createChannel);
 
 router
-  .route("/channel/:channelId")
-  .get(mongoIdPathVariableValidator("channelId"), validate, getChannelDetails)
+  .route("/:serverId/create")
+  .post(upload.single("avatar"),PostgresPathVariableValidator('serverId'),createAGroupChatValidator(), validate,createChannel);
+
+router
+  .route("/:serverId/:channelId/currentChannel")
+  .get(PostgresPathVariableValidator("serverId"),PostgresPathVariableValidator("channelId"), validate, getChannelDetails)
   .patch(
-    mongoIdPathVariableValidator("channelId"),
+    PostgresPathVariableValidator("serverId"),
+    PostgresPathVariableValidator("channelId"),
     updateGroupChatNameValidator(),
     validate,
     renameChannel
   )
-  .delete(mongoIdPathVariableValidator("channelId"), validate, deleteChannel);
+  .delete(PostgresPathVariableValidator("serverId"),PostgresPathVariableValidator("channelId"), validate, deleteChannel);
 
 router
-  .route("/channel/:channelId/:participantId")
+  .route("/:serverId/:channelId/Participant")
   .post(
-    mongoIdPathVariableValidator("channelId"),
-    mongoIdPathVariableValidator("participantId"),
+    PostgresPathVariableValidator("serverId"),
+    PostgresPathVariableValidator("channelId"),
+    ParticipnatValidator(),
     validate,
     addNewParticipantinChannel
   )
   .delete(
-    mongoIdPathVariableValidator("channelId"),
-    mongoIdPathVariableValidator("participantId"),
+    PostgresPathVariableValidator("serverId"),
+    PostgresPathVariableValidator("channelId"),
+    ParticipnatValidator(),
     validate,
     removeParticipantFromChannel
   );
 
 router
-  .route("/leave/channel/:channelId")
-  .delete(mongoIdPathVariableValidator("channelId"), validate, leaveChannel);
+  .route("/:serverId/:channelId/leaveChannel")
+  .delete(PostgresPathVariableValidator("serverId"),PostgresPathVariableValidator("channelId"), validate, leaveChannel);
 
 export default router;

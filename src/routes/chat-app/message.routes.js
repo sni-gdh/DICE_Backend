@@ -7,7 +7,7 @@ import {
 import { verifyJWT } from "../../middleware/auth.middleware.js";
 import { upload } from "../../middleware/multer.middleware.js";
 import { sendMessageValidator } from "../../validator/chatapp/message.validator.js";
-import { mongoIdPathVariableValidator } from "../../validator/common/db.validators.js";
+import { PostgresPathVariableValidator } from "../../validator/common/db.validators.js";
 import { validate } from "../../validator/validate.js";
 
 const router = Router();
@@ -15,11 +15,11 @@ const router = Router();
 router.use(verifyJWT);
 
 router
-  .route("/:chatId")
-  .get(mongoIdPathVariableValidator("chatId"), validate, getAllThread)
+  .route("/:channelId")
+  .get(PostgresPathVariableValidator("channelId"), validate, getAllThread)
   .post(
     upload.fields([{ name: "attachments", maxCount: 5 }]),
-    mongoIdPathVariableValidator("chatId"),
+    PostgresPathVariableValidator("channelId"),
     sendMessageValidator(),
     validate,
     sendThread
@@ -28,10 +28,10 @@ router
 //Delete message route based on Message id
 
 router
-  .route("/:chatId/:messageId")
+  .route("/:channelId/:messageId")
   .delete(
-    mongoIdPathVariableValidator("chatId"),
-    mongoIdPathVariableValidator("messageId"),
+    PostgresPathVariableValidator("channelId"),
+    PostgresPathVariableValidator("messageId"),
     validate,
     deleteMessage
   );

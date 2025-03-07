@@ -1,3 +1,4 @@
+// todo remove cloudinary from every where as we are not storing data in it.
 import { Router } from "express";
 import {
     registerUser,
@@ -6,6 +7,7 @@ import {
     refreshAccessToken,
     changeCurrentPassword,
     getCurrentUser,
+    forgotPasswordRequest,
     updateUserAvatar,
     verifyUserEmail,
     resendEmailVerification,
@@ -16,8 +18,10 @@ import {
  } from "../middleware/auth.middleware.js";
 //
 import {
+  userRegisterValidator,
   userChangeCurrentPasswordValidator,
   userForgotPasswordValidator,
+  userLoginValidator,
   userResetForgottenPasswordValidator,
 } from "../validator/user/user.validator.js"
 import {validate} from "../validator/validate.js"
@@ -27,13 +31,13 @@ import {upload} from "../middleware/multer.middleware.js"
 const router = Router();
 
 // unsecure routes
-router.route("/register").post(upload.single('avatar'),registerUser)
-router.route("/login").post(loginUser)
+router.route("/register").post(upload.single('avatar'),userRegisterValidator(),validate,registerUser) //upload.single('avatar'),
+router.route("/login").post(userLoginValidator(),validate,loginUser)
 router.route("/refresh-token").post(refreshAccessToken)
 router.route("/verify-email/:verificationToken").get(verifyUserEmail);
 router
   .route("/forgot-password")
-  .post(userForgotPasswordValidator(), validate, forgotPasswordRequest);
+  .post(userForgotPasswordValidator(), validate,forgotPasswordRequest);
 router
   .route("/reset-password/:resetToken")
   .post(

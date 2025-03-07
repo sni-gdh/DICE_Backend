@@ -1,19 +1,21 @@
 import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
+import logger from "../logger/winston.logger.js"
 // jsdoc comment to provide annotations, descriptions, and documentation for functions, methods, or other constructs 
 /**
  *
  * @param {{email: string; subject: string; mailgenContent: Mailgen.Content; }} options
  */
 // to send the mail in pretty format.
-const sendEmail = async(options) => {const mailGenerator = new Mailgen({
+const sendEmail = async(options) => {
+  const mailGenerator = new Mailgen({
     theme : 'default',
     product : {
         name : "BullitenFeed",
         link : "https://bullitenFeed.com",
     }
 })
-}
+
 
 
 // Generate the plaintext version of the e-mail (for clients that do not support HTML)
@@ -48,6 +50,7 @@ const transporter = nodemailer.createTransport({
       );
       logger.error("Error: ", error);
   }
+};
 // ********************************************************************************************************************
 /**
  *
@@ -56,7 +59,7 @@ const transporter = nodemailer.createTransport({
  * @returns {Mailgen.Content}
  * @description It designs the email verification mail
  */
-  const emailVerificationMailgenContent = async(username,verificationUrl)=>{
+  const emailVerificationMailgenContent = (username,verificationUrl)=>{
     return {
         body: {
             name: username,
@@ -82,7 +85,7 @@ const transporter = nodemailer.createTransport({
  * @description It designs the forgot password mail
  */
 
-  const forgotPasswordMailgenContent = async(username,passwordResetUrl)=>{
+  const forgotPasswordMailgenContent = (username,passwordResetUrl)=>{
     return {
         body: {
             name: username,

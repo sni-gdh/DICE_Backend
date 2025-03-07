@@ -1,5 +1,7 @@
 import {body , param} from "express-validator"
-import validator from "validator" 
+import pkg from 'validator';
+const { isUUID } = pkg;
+
  /**
   * 
   * @param {string} idName
@@ -12,6 +14,16 @@ import validator from "validator"
     ];
  };
 
+ export const PostgresPathVariableValidator = (idName)=>{
+    return [
+        param(idName).notEmpty().isInt().withMessage(`Invalid ${idName}`),
+    ]
+ };
+//  export const serverIdValidator = () => {
+//     return [
+//       param("serverId").notEmpty().isInt().withMessage("Invalid Server id"),
+//     ];
+//  }
  /**
   * @param {string} idName
   * @discription a common validator to validate database id passed in the request body.
@@ -22,8 +34,3 @@ import validator from "validator"
     ];
  };
 
- export const PostgresPathVariableValidator = (idName)=>{
-    return [
-        validator.isUUID(idName)
-    ];
- };

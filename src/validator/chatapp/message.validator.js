@@ -11,4 +11,4 @@ const sendMessageValidator = ()=>{
     ];
 };
 
-return { sendMessageValidator }
+export { sendMessageValidator }

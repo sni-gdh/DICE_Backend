@@ -1,6 +1,11 @@
-import { Sequelize, DataTypes } from 'sequelize';
-import sequelize from '../db/postgres.js';
-
+import { DataTypes, DATE } from 'sequelize';
+import {sequelize} from '../db/postgres.js';
+import bcrypt from "bcrypt"
+import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
+import { USER_TEMPORARY_TOKEN_EXPIRY } from '../constants.js'
+// import ChannelUser from './userChannel.models.js'
+// import Server from './server.models.js'
 const User = sequelize.define('User', {
   name: {
     type: DataTypes.STRING,
@@ -25,7 +30,7 @@ const User = sequelize.define('User', {
     type: DataTypes.JSON, // Store as a stringified JSON
     allowNull: false,
     defaultValue: {
-      url: "https://via.placeholder.com/200x200.png",
+      url: "https://res.cloudinary.com/ddyuwxg3o/image/upload/v1741023486/dog_us6tqk.jpg",
       localPath: ""
     }
   },
@@ -49,12 +54,12 @@ const User = sequelize.define('User', {
     type:DataTypes.STRING,
     allowNull: true
   },
-  forgetPasswordToken:{
+  forgotPasswordToken:{
     type:DataTypes.STRING,
     allowNull: true
   },
   forgotPasswordExpiry:{
-    type:DataTypes.STRING,
+    type:DataTypes.DATE,
     allowNull: true
   },
   isEmailVerified:{
@@ -128,6 +133,5 @@ User.prototype.generateTemporaryToken = function () {
 
   return { unHashedToken, hashedToken, tokenExpiry };
 };
-
 
 export default User;

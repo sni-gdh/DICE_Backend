@@ -7,7 +7,7 @@ import {ApiResponse} from "../../utils/ApiResponse.js"
 import { uplodOnCloudinary } from "../../utils/Cloudinary.js"
 
 import jwt from "jsonwebtoken";
-
+import crypto from "crypto"
 import {emailVerificationMailgenContent,
     forgotPasswordMailgenContent,
     sendEmail
@@ -18,18 +18,19 @@ import {
     getLocalPath,
     getStaticFilePath,
     removeLocalFile,
-  } from "../../../utils/helpers.js";
-
+  } from "../../utils/helpers.js";
+  import { Op } from "sequelize";
 const generateAceessandRefreshTokens = async (userId) => {
     try{
         const user = await User.findByPk(userId);
         if (!user) {
             throw new ApiError(404, "User not found");
           }
-        const accessToken = User.generateAccessToken()
-        const refreshToken = User.generateRefreshToken()
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
         
-        user.refreshToken = refreshToken;
+        user.refreshtoken = refreshToken;
+        console.log("token is saved");
         await user.save();
         return {accessToken,refreshToken}
 
@@ -40,7 +41,7 @@ const generateAceessandRefreshTokens = async (userId) => {
 
 
 const registerUser = asyncHandler(async (req,res) => {
-    const {name,univ_mail,password,program,course,section,join_year} = req.body ;
+    const {name,univ_mail,password,program,course,section,join_year} = Object.assign({},req.body) ;
     console.log(req.body);
     if(
         [name,univ_mail,password,program,course,section,join_year].some((field)=>field?.trim() === "")
@@ -48,23 +49,13 @@ const registerUser = asyncHandler(async (req,res) => {
         throw new ApiError(409,"All fields are required");
     }
     const existedUser = await User.findOne({
-        where : {univ_mail : univ_mail}
+        where : {univ_mail : univ_mail},
+        raw  : true
     })
     console.log(existedUser);
-    if(existedUser[0]>0)
+    if(existedUser)
     {
         throw new ApiError(401,"User exits")
-    }
-
-
-    const avatarLocalPath = req.file?.path;
-    if(!avatarLocalPath){
-        throw new ApiError(400,"Avatar file is required")
-    }
-    const avatar = await uplodOnCloudinary(avatarLocalPath);
-    
-    if(!avatar){
-        throw new ApiError(500,"Something went wrong while uploading avatar")
     }
 
     const user = await User.create({
@@ -77,7 +68,26 @@ const registerUser = asyncHandler(async (req,res) => {
         join_year,
         isEmailVerified: false,
       });
+      
+    if (!req.file?.filename) {
+        throw new ApiError(400, "Avatar image is required");
+    }
+    
+    // get avatar file system url and local path
+    const avatarUrl = getStaticFilePath(req, req.file?.filename);
+    const avatarLocalPath = getLocalPath(req.file?.filename);
 
+    await User.update(
+        {
+            avatar: {
+            url: avatarUrl,
+            localPath: avatarLocalPath,
+            },
+        },
+        {
+            where: { id: user.id },
+        }
+        );
     const { unHashedToken, hashedToken, tokenExpiry } = user.generateTemporaryToken();
     user.emailVerificationToken = hashedToken;
     user.emailVerificationExpiry = tokenExpiry;
@@ -94,7 +104,6 @@ const registerUser = asyncHandler(async (req,res) => {
         ),
       });
     //   ****************************************************************
-
     // const user  = await executeQuery(`insert into "GroupChat"."user" ("name","univ_mail","password","avatar","program","course","section","join_year","created_at","update_at",emailVerificationToken,emailVerificationExpiry) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning "user_id"`,[name,univ_mail,encryptedPassword,avatar.url,program,course,section,join_year,created_at,updated_at,emailVerificationToken,emailVerificationTokenExpiry])
     // const createdUser = await executeQuery(`select "name","univ_mail","avatar","program","course","section","join_year","created_at","update_at" from "GroupChat"."user" where "user_id" = $1`,[user.user_id]);
     const createdUser = await User.findByPk(user.id, {
@@ -109,16 +118,15 @@ const registerUser = asyncHandler(async (req,res) => {
     )
 })
 // lognin user
-const loginUser = asyncHandler(async(req,res)=>{
+const loginUser = asyncHandler(async (req,res) => {
+    const {name,univ_mail,password} = req.body;
         // req.body -> data
         // univ_mail
         // find user 
         // password check
-        // access and refresh token
+        // access and refresh token 
         // send cookies
-
-        const {name,univ_mail,password} = req.body;
-        if(!(name || univ_mail)){
+        if(!name && !univ_mail){
             throw new ApiError(400,"name or univ_mail is required")
         }
         // const user  = executeQuery(`select * from "GroupChat"."user" where "univ_mail" = $1 or "name" = $2`,[univ_mail,name]);
@@ -132,12 +140,10 @@ const loginUser = asyncHandler(async(req,res)=>{
         }
 
         const isPasswordValid = await user.isPasswordCorrect(password);
-
         if(!isPasswordValid){
             throw new ApiError(401,"Invalid user credentials")
         }
         const {accessToken , refreshToken} = await generateAceessandRefreshTokens(user.id)
-
         // const logedInUser = await executeQuery(`select "user_id","name","univ_mail","avatar","program","course","section","join_year" from "GroupChat"."user" where "user_id" = $1`,[user[0].user_id])
         const logedInUser = await User.findByPk(user.id,{
             attributes :{exclude : ["password","refreshToken","emailVerificationToken","emailVerificationExpiry"]}
@@ -158,7 +164,7 @@ const loginUser = asyncHandler(async(req,res)=>{
 const logoutUser = asyncHandler(async(req,res)=>{
     // await executeQuery(`update "GroupChat"."user" set "refreshtoken" = $1 where "user_id" = $2`,[null,req.user.user_id])
     await User.update(
-        { refreshToken: '' },
+        { refreshtoken: '' },
         {
           where: { id: req.user.id },
           returning: true,
@@ -192,9 +198,13 @@ const verifyUserEmail  = asyncHandler(async(req,res)=>{
     let hashedToken = crypto.createHash("sha256").update(verificationToken).digest("hex");
     // const user = await executeQuery(`select "user_id" from "GroupChat"."user" where "emailVerificationToken" = $1 and "emailVerificationExpiry" = $2`,[hashedToken,Date.now()]);
     const user = await User.findOne({
-        emailVerificationToken: hashedToken,
-        emailVerificationExpiry : [Op.gt] = Date.now()
-    })
+        where: {
+          emailVerificationToken: hashedToken,
+          emailVerificationExpiry: {
+            [Op.gt]: Date.now()
+          }
+        }
+      });
     if(!user){
         throw new ApiError(400,"Token is invalid or expired");
     }
@@ -233,7 +243,7 @@ const resendEmailVerification = asyncHandler(async(req,res)=>{
     
     // send email verification mail to the user. ****important**********
     await sendEmail({
-        email: univ_mail,
+        email: user.univ_mail,
         subject: "Please verify your email",
         mailgenContent: emailVerificationMailgenContent(
           user.name,
@@ -291,7 +301,7 @@ const refreshAccessToken = asyncHandler(async(req,res)=>{
 })
 //delete user, update user profile, 
 // forget password request
-const forgetPasswordRequest = asyncHandler(async(req,res)=>{
+const forgotPasswordRequest = asyncHandler(async(req,res)=>{
     const {univ_mail} = req.body;
     const user = await User.findOne({
         where : {univ_mail : univ_mail}
@@ -306,7 +316,7 @@ const forgetPasswordRequest = asyncHandler(async(req,res)=>{
     user.forgotPasswordToken = hashedToken;
     user.forgotPasswordExpiry = tokenExpiry;
     user.save();
-
+    console.log(unHashedToken);
     // await executeQuery(`update "GroupChat"."user" set "forgotPasswordToken" = $1,"forgotPasswordExpiry" = $2 where "user_id" = $3`,[forgotPasswordToken,forgotPasswordExpiry,user[0].user_id])
 
     await sendEmail({
@@ -331,11 +341,12 @@ const resetForgottenPassword = asyncHandler(async(req,res) =>{
     // const encryptedPassword = await hashPassword(newPassword);
     // the reset token is hashed which was sent at the time of forget password request
     const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    
     // const user = await executeQuery(`select "user_id" from "GroupChat"."user" where "forgotPasswordToken"=$1 and "forgotPasswordExpiry"=$2`,[hashedToken,Date.now()]);
     const user = await User.findOne({
         where : {forgotPasswordToken : hashedToken ,
-            forgotPasswordExpiry : [Op.gt] = Date.now()
+            forgotPasswordExpiry :{
+                [Op.gt] : Date.now()
+            } 
         },
     })
     if(!user)
@@ -461,6 +472,6 @@ export {
     updateUserAvatar,
     verifyUserEmail,
     resendEmailVerification,
-    forgetPasswordRequest,
+    forgotPasswordRequest,
     resetForgottenPassword
 }

@@ -14,7 +14,13 @@ const messageSchema = new mongoose.Schema({
     ], // Use Mixed type for JSONB-like behavior
     default: [],
   },
+  senderId : {
+    type : String,
+  },
   threadId:{
+    type : String,
+  },
+  channelId:{
     type : String,
   },
   reaction_count : {

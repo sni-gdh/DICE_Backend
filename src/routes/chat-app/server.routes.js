@@ -8,15 +8,16 @@ import {
     addNewParticipantinServer,
     removeParticipantFromServer,
     getAllServers,
-    SerarchAvailableUsers
-} from "../../controllers/chatapp/channel.controllers.js";
+    searchAvailableUsers
+} from "../../controllers/chatapp/server.controller.js";
 import { verifyJWT } from "../../middleware/auth.middleware.js";
 import {
   createAGroupChatValidator,
   updateGroupChatNameValidator,
 } from "../../validator/chatapp/chat.validators.js";
-import { mongoIdPathVariableValidator } from "../../validator/common/db.validators.js";
-import { validate } from "../../validator/validate";
+import { PostgresPathVariableValidator,mongoIdPathVariableValidator } from "../../validator/common/db.validators.js";
+import { validate } from "../../validator/validate.js";
+import {upload} from "../../middleware/multer.middleware.js"
 
 const router = Router();
 
@@ -24,41 +25,41 @@ router.use(verifyJWT);
 
 router.route("/").get(getAllServers);
 
-router.route("/users").get(SerarchAvailableUsers);
+router.route("/:ServerId/users").get(searchAvailableUsers);
 
 
 router
-  .route("/server")
-  .post(createAGroupChatValidator(), validate, createServer);
+  .route("/create")
+  .post(upload.single("avatar"),createAGroupChatValidator(), validate, createServer);
 
 router
-  .route("/server/:ServerId")
-  .get(mongoIdPathVariableValidator("ServerId"), validate, getServerDetails)
+  .route("/:ServerId/currentServer")
+  .get(PostgresPathVariableValidator("ServerId"), validate, getServerDetails)
   .patch(
-    mongoIdPathVariableValidator("ServerId"),
+    PostgresPathVariableValidator("ServerId"),
     updateGroupChatNameValidator(),
     validate,
     renameServer
   )
-  .delete(mongoIdPathVariableValidator("ServerId"), validate, deleteServer);
+  .delete(PostgresPathVariableValidator("ServerId"), validate, deleteServer);
 
 router
-  .route("/server/:ServerId/:memberId")
+  .route("/Participant/:ServerId/:memberId")
   .post(
-    mongoIdPathVariableValidator("ServerId"),
-    mongoIdPathVariableValidator("memberId"),
+    PostgresPathVariableValidator("ServerId"),
+    PostgresPathVariableValidator("memberId"),
     validate,
     addNewParticipantinServer
   )
   .delete(
-    mongoIdPathVariableValidator("ServerId"),
-    mongoIdPathVariableValidator("memberId"),
+    PostgresPathVariableValidator("ServerId"),
+    PostgresPathVariableValidator("memberId"),
     validate,
     removeParticipantFromServer
   );
 
 router
-  .route("/leave/server/:ServerId")
-  .delete(mongoIdPathVariableValidator("channelId"), validate, leaveServer);
+  .route("/leave/:ServerId")
+  .delete(PostgresPathVariableValidator("ServerId"), validate, leaveServer);
 
 export default router;

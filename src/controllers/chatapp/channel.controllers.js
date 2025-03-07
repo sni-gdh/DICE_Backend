@@ -1,421 +1,581 @@
-import ChatEventEnum from '../../constants.js';
-import User from '../../models/user.models.js';
-import Server from '../../models/server.models.js';
-import Channel from '../../models/channel.models.js';
-import Thread from '../../models/threads.models.js';
-import Message from '../../models/message.models.js'
+// todo Add function to update avatar for Channel and its details,aff function to let admin leave channel while assigning new admin.
+import { Op } from 'sequelize';
+import { ChatEventEnum } from '../../constants.js';
+import { User, Server, Channel, Thread, Message, ChannelUser, userServer } from '../../models/centeralized.models.js';
+import { emitSocketEvent } from '../../scoket/index.js';
+import { ApiError } from '../../utils/ApiError.js';
+import { ApiResponse } from '../../utils/ApiResponse.js';
+import { asyncHandler } from '../../utils/asyncHandler.js';
+import { removeLocalFile, getStaticFilePath, getLocalPath } from '../../utils/helpers.js';
 
-import {emitSocketEvent} from '../../scoket/index.js';
-import {ApiError} from '../../utils/ApiError.js';
-import {ApiResponse} from '../../utils/ApiResponse.js';
-import {asyncHandler} from '../../utils/asyncHandler.js';
-import {removeLocalFile} from '../../utils/helpers.js';
-import mongoose from 'mongoose';
-
-
-const channel_structure = ()=>{
-    return {
+const channel_structure = () => {
+  return {
+    include: [
+      {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      {
+        model: Thread,
         include: [
           {
             model: User,
-            as: 'participants',
-            attributes: { exclude: ["password", "refreshToken", "forgotPasswordToken", "forgotPasswordExpiry", "emailVerificationToken", "emailVerificationExpiry"] }
-          },
-          {
-            model: Thread,
-            as: 'ChannelThreads',
-            include: [
-              {
-                model: User,
-                as: 'sender',
-                attributes: ['name', 'avatar', 'univ_mail']
-              },
-            ],
+            attributes: ['id', 'name', 'avatar', 'univ_mail'],
           },
         ],
-    } 
-}
+      },
+    ],
+  };
+};
 
-const deleteCascadeChannelMessages = async (ChannelId)=>{
-    const Threads = await Thread.findAll({
-        where : {
-            channelId : ChannelId
-        }
-    })
-    const ThreadIds = Threads.map((Thread) => Thread.id)
-    if (ThreadIds.length === 0) {
-        console.log("No threads found for the given channel.");
-        return;
-    }
-    let attachments = []
-    const messages =  await Message.find(
-                    {
-                        threadId : {$in : ThreadIds}
-                    }
-                )
-    attachments = attachments.concat(
-        ...messages.map((message)=>{
-            return message.attachments || [];
-        })
-    )
-    attachments.forEach((attachment)=>{
-        removeLocalFile(attachment.localPath);
-    })
-    await Message.deleteMany({
-        threadId : { $in : ThreadIds}
-    })
-    await Thread.destroy({
-        where : {
-            channelId : {[Op.in] : ChannelId} 
-        }
-    })  
-}
-
-const SerarchAvailableUsers = asyncHandler(async(req,res)=>{
-    try {
-        const {channelId}  =  req.params
-        const userChannel = await Channel.findOne(
-            {
-                where : {
-                    id : channelId
-                },
-                attributes : ['participants']
-            }
-        )
-        const participants = userChannel.participants || [];
-        const users = await User.findAll({
-            where : {
-                id : {
-                    [Op.in] : participants
-                }
-            }
-        })
-        return res.
-        status(200)
-        .json(new ApiResponse(200,users,"Users fetched Successfully"));
-    } catch (error) {
-        console.log("Error fetching details form channel",error);
-        throw new ApiError(500,"Internal Server Error")
-    }
-})
-
-const createChannel = asyncHandler(async(req,res)=>{
-    try {
-        const {name,participants,serverId,avatar} = req.body
-        if(participants.includes(req.user.id.toString())){
-            throw new ApiError(400 , "Member array should not contain the Channel creator");
-        }
-    
-        if(!name || participants.length === 0){
-            throw new ApiError(400 , "All fields are required")
-        }
-        const Channel_participants = [...new Set([...participants, req.user._id.toString()])];//checking for duplicate members
-    
-        const channel = await Channel.create(
-            {
-                name,
-                serverId,
-                participants : Channel_participants,
-                avatar,
-            }
-        );
-
-        const channel_structure = await Channel.findOne({
-            where :{id : channel.id},
-            ...channel_structure()
-        })
-
-        if(!channel_structure){
-            throw new ApiError(500,"Internal Server_Channel Error")
-        }
-
-        channel_structure?.participants?.forEach((participant)=>{
-            if (participant.id.toString() === req.user.id.toString()) return;
-            emitSocketEvent(
-                req,
-                participant.id?.toString(),
-                ChatEventEnum.NEW_CHANNEL_EVENT,
-                channel_structure
-            );
-        })
-        return res
-        .status(201)
-        .json(new ApiResponse(201 , channel_structure , "Channel created sucessfully"));
-        
-    } catch (error) {
-        console.log("Error while creating channel",error);
-        throw new ApiError(500,"Internal Server Error")
-    }
-})
-
-const getChannelDetails = asyncHandler(async(req,res)=>{
-    const {channelId} = req.params
-    const ChannelDetails = await Server.findOne({
-        where: { id: channelId },
-        ...channel_structure()
+const deleteCascadeChannelMessages = async (channelId) => {
+  try {
+    const threads = await Thread.findAll({
+      where: {
+        channelId: channelId
+      }
     });
 
-    if(!ChannelDetails){
-        throw new ApiError(404 ,"Channel does not exist")
-    }
-    return res.
-    status(200)
-    .json(new ApiResponse(200,ChannelDetails,"Channel details fetched sucessfully"));
-})
-
-const renameChannel = asyncHandler(async(req,res)=>{
-    try {
-        const { channelId } = req.params;
-        const { name } = req.body;
-
-    const channel = await Channel.findOne({
-        where : {id : channelId}
-    })
-    if(!channel){
-        throw new ApiError(404,"Channel does not exist");
+    const threadIds = threads.map((thread) => thread.id);
+    if (threadIds.length === 0) {
+      console.log("No threads found for the given channel.");
+      return;
     }
 
-    if(channel.admin.toString() !== req.user.id.toString()){
-        throw new ApiError(403,"You are not an admin")
-    }
-
-    const updatedChannel = await Channel.update({
-        name : name
-    },{
-        where : {id:channelId}
-    })
-
-    const channelDetails = await Server.findOne({
-        where : {id : updatedChannel.id},
-        ...channel_structure()
-    })
-    if(!channelDetails){
-        throw new ApiError(500, "Internal server_channel error")
-    }
-
-    channelDetails?.participants?.forEach((participant)=>{
-        emitSocketEvent(
-            req,
-            participant.id?.toString(),
-            ChatEventEnum.UPDATE_CHANNEL_NAME_EVENT,
-            channelDetails
-        )
-    })
-    return res.
-    status(200)
-    .json(new ApiResponse(200,channelDetails,"Channel name updated sucessfully"))
-    } catch (error) {
-        console.log("Error while updating name",error);
-        throw new ApiError(500,"Internal Server_Channel Error");
-    }
-})
-
-const deleteChannel = asyncHandler(async(req,res)=>{
-    try {
-        const {channelId} = req.params
-        const channel = await Channel.findOne({
-            where : {id : channelId},
-            ...channel_structure()
-        })
-    
-        if(!channel){
-            throw new ApiError(404,"Server does not exist")
+    let attachments = [];
+      const messages =  await Message.find(
+        {
+            threadId : {$in : threadIds}
         }
-    
-        if(channel.admin.toString() != req.user.id.toString()){
-            throw new ApiError(403,"Only admin can delete the channel")
-        }
-    
-        await Channel.destroy({
-            where : {id : channelId}
+    );
+  
+      attachments = attachments.concat(
+        ...messages.map((message) => {
+          return message.attachments || [];
         })
-    
-        await deleteCascadeChannelMessages(channelId)
-    
-        channel?.participants?.forEach((participant)=>{
-            if (participant._id.toString() === req.user._id.toString()) return;
-            emitSocketEvent(
-                req,
-                participant?.id?.toString(),
-                ChatEventEnum.LEAVE_CHANNEL_EVENT,
-                channel
-            )
-        })
-        return res.
-        status(200).
-        json(new ApiResponse(200,{},"Server deleted sucessfully"));
-    } catch (error) {
-        console.log("Error while deleting Threads",error);
-        throw new ApiError(500,"Internal Server_channel error");
-    }
-})
-
-const leaveChannel = asyncHandler(async(req,res)=>{
-    try{
-    const {channelId} = req.params;
-    const channel = await Channel.findOne({where : {id : channelId}})
-    if(!channel){
-        throw new ApiError(404,"Channel does not exist")
-    }
-
-    const existingParticipants = channel.participants || [];
-    if(!existingParticipants?.includes(req.user?.id)){
-        throw new ApiError(400,"You are not a part of this Channel")
-    }
-
-    const updatedParticipants = existingParticipants.filter((participant)=>participant.toString() !== req.user.id.toString())
-    await Channel.update({
-        participants : updatedParticipants},{
-            where : {id : channelId}
-        }
-    )
-    await Channel.save();
-    const channelDetails = await Channel.findOne({
-        where : {id : channelId},
-        ...channel_structure(),
+      );
+  
+      attachments.forEach((attachment) => {
+        removeLocalFile(attachment.localPath);
+      });
+  
+      await Message.deleteMany({
+        threadId : { $in : threadIds}
     })
-    if(!channelDetails){
-        throw new ApiError(500,"Internal Channel error")
-    }
+
+    await Thread.destroy({
+      where: {
+        channelId: channelId
+      }
+    });
+
+    console.log("Cascade delete of channel messages completed successfully.");
+  } catch (error) {
+    console.log("Error while deleting cascade channel messages", error);
+    throw new ApiError(500, "Internal Server Error while deleting cascade channel messages");
+  }
+};
+
+const searchAvailableUsers = asyncHandler(async (req, res) => {
+  try {
+    const { serverId, channelId } = req.params;
+    const userChannel = await Channel.findOne({
+      where: {
+        serverId: serverId,
+        id: channelId
+      },
+      include: {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      attributes: []
+    });
+
     return res
-    .status(200)
-    .json(new ApiResponse(200, channelDetails, "Left Channel successfully"));
-    }
-    catch(error){
-        console.log("Error while leaving channel",error);
-        throw new ApiError(500,"Internal Server_channel Error while Leaving the channel")
-    }
-})
+      .status(200)
+      .json(new ApiResponse(200, userChannel, "Users fetched successfully"));
+  } catch (error) {
+    console.log("Error fetching details from channel", error);
+    throw new ApiError(500, "Internal Server Error");
+  }
+});
 
-const addNewParticipantinChannel = asyncHandler(async(req,res)=>{
-    try {
-        const {channleId , participantId} = req.params
+const createChannel = asyncHandler(async (req, res) => {
+  try {
+    const { name, participants } = req.body;
+    const { serverId } = req.params;
 
-    const channel = await Channel.findOne({
-        where : {id : channleId}
-    })
+    const user = await Server.findOne({
+      where: { id: serverId },
+      attributes: ['admin']
+    });
 
-    if(!channel){
-        throw new ApiError(404,"Channel does not exist")
-    }
-
-    if(channel.admin.toString() !== req.user.id.toString()){
-        throw new ApiError(403,"Only admin can add participants")
+    if (!user) {
+      throw new ApiError(404, "Server does not exist");
     }
 
-    const existingParticipants = channel.participants || [];
-    const newParticipants = [...new Set([...existingParticipants , ...participantId])]
+    if (user.admin.toString() !== req.user.id.toString()) {
+      throw new ApiError(403, "Only Server admin can create a channel");
+    }
 
-    await Channel.update({
-        participants : newParticipants
-    },{
-        where : {id : channleId}
-    })
+    if (participants.includes(req.user.id.toString())) {
+      throw new ApiError(400, "Member array should not contain the Channel creator");
+    }
+
+    if (!name || participants.length === 0) {
+      throw new ApiError(400, "All fields are required");
+    }
+
+    const channelParticipants = [...new Set([...participants, req.user.id.toString()])]; // Checking for duplicate members
+
+    if (!req.file?.filename) {
+      throw new ApiError(400, "Avatar image is required");
+    }
+
+    // Get avatar file system URL and local path
+    const avatarUrl = getStaticFilePath(req, req.file?.filename);
+    const avatarLocalPath = getLocalPath(req.file?.filename);
+
+    const channel = await Channel.create({
+      name: name,
+      serverId: serverId,
+      avatar: {
+        url: avatarUrl,
+        localPath: avatarLocalPath,
+      },
+    });
+
+    await channel.addUser(channelParticipants);
+
+    const channelStructure = await Channel.findOne({
+      where: { id: channel.id },
+      ...channel_structure()
+    });
+
+    if (!channelStructure) {
+      throw new ApiError(500, "Internal Server_Channel Error");
+    }
+
+    channelParticipants.forEach((participant) => {
+      if (participant === req.user.id) return;
+      emitSocketEvent(
+        req,
+        participant.toString(),
+        ChatEventEnum.NEW_CHANNEL_EVENT,
+        channelStructure
+      );
+    });
+
+    return res
+      .status(201)
+      .json(new ApiResponse(201, channelStructure, "Channel created successfully"));
+
+  } catch (error) {
+    console.log("Error while creating channel", error);
+    throw new ApiError(500, "Internal Server Error");
+  }
+});
+
+const getChannelDetails = asyncHandler(async (req, res) => {
+  try {
+    const { serverId, channelId } = req.params;
 
     const channelDetails = await Channel.findOne({
-        where : {id : channleId},
-        ...channel_structure()
-    })
+      where: { id: channelId, serverId: serverId },
+      ...channel_structure()
+    });
 
-    if(!channelDetails){
-        throw new ApiError(500,"Internal server_channel error, while adding new participant")
+    if (!channelDetails) {
+      throw new ApiError(404, "Channel does not exist");
     }
-    emitSocketEvent(
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, channelDetails, "Channel details fetched successfully"));
+  } catch (error) {
+    console.log("Error while fetching channel details", error);
+    throw new ApiError(500, "Internal Server Error while fetching channel details");
+  }
+});
+
+const renameChannel = asyncHandler(async (req, res) => {
+  try {
+    const { serverId, channelId } = req.params;
+    const { name } = req.body;
+
+    const channel = await Channel.findOne({
+      where: {
+        id: channelId,
+        serverId: serverId
+      }
+    });
+
+    if (!channel) {
+      throw new ApiError(404, "Channel does not exist");
+    }
+
+    const server = await Server.findOne({
+      where: { id: serverId },
+      attributes: ['admin']
+    });
+
+    if (!server) {
+      throw new ApiError(404, "Server does not exist");
+    }
+
+    if (server.admin.toString() !== req.user.id.toString()) {
+      throw new ApiError(403, "You are not an admin");
+    }
+
+    await Channel.update({
+      name: name
+    }, {
+      where: { id: channelId, serverId: serverId }
+    });
+
+    const channelDetails = await Channel.findOne({
+      where: { id: channelId },
+      ...channel_structure()
+    });
+
+    if (!channelDetails) {
+      throw new ApiError(500, "Internal server_channel error");
+    }
+
+    const users = await ChannelUser.findAll({
+      where: { channelId: channelId },
+      attributes: ['userId']
+    });
+
+    const participants = users.map(user => user.userId);
+    participants.forEach((participant) => {
+      emitSocketEvent(
         req,
-        channleId,
+        participant.toString(),
+        ChatEventEnum.UPDATE_CHANNEL_NAME_EVENT,
+        channelDetails
+      );
+    });
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, channelDetails, "Channel name updated successfully"));
+  } catch (error) {
+    console.log("Error while updating name", error);
+    throw new ApiError(500, "Internal Server_Channel Error");
+  }
+});
+
+const deleteChannel = asyncHandler(async (req, res) => {
+  try {
+    const { serverId, channelId } = req.params;
+
+    const channel = await Channel.findOne({
+      where: { id: channelId, serverId: serverId }
+    });
+
+    if (!channel) {
+      throw new ApiError(404, "Channel does not exist");
+    }
+
+    const users = await ChannelUser.findAll({
+      where: { channelId: channelId },
+      attributes: ['userId']
+    });
+
+    const participants = users.map(user => user.userId);
+
+    const server = await Server.findOne({
+      where: { id: serverId },
+      attributes: ['admin']
+    });
+
+    if (!server) {
+      throw new ApiError(404, "Server does not exist");
+    }
+
+    if (server.admin.toString() !== req.user.id.toString()) {
+      throw new ApiError(403, "Only admin can delete the channel");
+    }
+
+    await Channel.destroy({
+      where: { id: channelId, serverId: serverId }
+    });
+
+    await deleteCascadeChannelMessages(channelId);
+
+    participants.forEach((participant) => {
+      if (participant.toString() === req.user.id.toString()) return;
+      emitSocketEvent(
+        req,
+        participant.toString(),
+        ChatEventEnum.LEAVE_CHANNEL_EVENT,
+        channel
+      );
+    });
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Channel deleted successfully"));
+  } catch (error) {
+    console.log("Error while deleting channel", error);
+    throw new ApiError(500, "Internal Server_channel error");
+  }
+});
+
+const leaveChannel = asyncHandler(async (req, res) => {
+  try {
+    const { serverId, channelId } = req.params;
+
+    const server = await Server.findOne({
+      where: { id: serverId }
+    });
+
+    if (!server) {
+      throw new ApiError(404, "Server does not exist");
+    }
+
+    const channel = await Channel.findOne({
+      where: { id: channelId, serverId: serverId }
+    });
+
+    if (!channel) {
+      throw new ApiError(404, "Channel does not exist");
+    }
+
+    if (server.admin.toString() === req.user.id.toString()) {
+      throw new ApiError(403, "Admin cannot leave before assigning new admin");
+    }
+
+    const users = await ChannelUser.findAll({
+      where: { userId: req.user.id, channelId: channelId },
+      attributes: ['id']
+    });
+
+    const leaver = users.map((user) => user.id);
+    if (!leaver.includes(req.user.id)) {
+      throw new ApiError(400, "You are not a part of this Channel");
+    }
+
+    await channel.removeUser(req.user.id);
+
+    const channelDetails = await Channel.findOne({
+      where: { id: channelId, serverId: serverId },
+      ...channel_structure(),
+    });
+
+    if (!channelDetails) {
+      throw new ApiError(500, "Internal Channel error");
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, channelDetails, "Left Channel successfully"));
+  } catch (error) {
+    console.log("Error while leaving channel", error);
+    throw new ApiError(500, "Internal Server_channel Error while Leaving the channel");
+  }
+});
+
+const addNewParticipantinChannel = asyncHandler(async (req, res) => {
+  try {
+    const { serverId, channelId } = req.params;
+    const { participants } = req.body;
+
+    // Ensure participants is an array
+    if (!Array.isArray(participants) || participants.length === 0) {
+      throw new ApiError(400, "Participants should be a non-empty array");
+    }
+
+    const users = await User.findAll({
+      where: { id: { [Op.in]: participants } }
+    });
+
+    users.map((user) => {
+      if (!participants.includes(user.id)) {
+        throw new ApiError(400, "User not Exist");
+      }
+    });
+
+    const server = await Server.findOne({
+      where: { id: serverId },
+      attributes: ['admin']
+    });
+
+    if (!server) {
+      throw new ApiError(404, "Server does not exist");
+    }
+
+    const channel = await Channel.findOne({
+      where: { id: channelId, serverId: serverId }
+    });
+
+    if (!channel) {
+      throw new ApiError(404, "Channel does not exist");
+    }
+
+    if (server.admin.toString() !== req.user.id.toString()) {
+      throw new ApiError(403, "Only admin can add participants");
+    }
+
+    if (participants.includes(server.admin) || participants.includes(req.user.id)) {
+      throw new ApiError(403, "Cannot add admin or person himself");
+    }
+
+    const count = await ChannelUser.count({
+      where: { userId: { [Op.in]: participants }, channelId: channelId }
+    });
+
+    if (count > 0) {
+      throw new ApiError(400, "Member exists in the Channel");
+    }
+
+    await channel.addUser(participants);
+
+    const channelDetails = await Channel.findOne({
+      where: { id: channelId, serverId: serverId },
+      ...channel_structure()
+    });
+
+    if (!channelDetails) {
+      throw new ApiError(500, "Internal server_channel error, while adding new participant");
+    }
+
+    participants.forEach((participant) => {
+      if (participant === req.user.id) return;
+      emitSocketEvent(
+        req,
+        participant.toString(),
         ChatEventEnum.NEW_CHAT_EVENT,
         channelDetails
-    )
+      );
+    });
 
     return res
-    .status(200)
-    .json(new ApiResponse(200,channelDetails,"Participants added sucessfully"))
-        
-    } catch (error) {
-        console.log("Error while adding new participant in channel",error);
-        throw new ApiError(500,"Ineternal Server_channel Error while adding participant")
-    }
-})
+      .status(200)
+      .json(new ApiResponse(200, channelDetails, "Participants added successfully"));
 
-const removeParticipantFromChannel = asyncHandler(async(req,res)=>{
-    try{
-    const {channelId,participantId} = req.params;
+  } catch (error) {
+    console.log("Error while adding new participant in channel", error);
+    throw new ApiError(500, "Internal Server_channel Error while adding participant");
+  }
+});
+
+const removeParticipantFromChannel = asyncHandler(async (req, res) => {
+  try {
+    const { serverId, channelId } = req.params;
+    const { participants } = req.body;
+
+    // Ensure participants is an array
+    if (!Array.isArray(participants) || participants.length === 0) {
+      throw new ApiError(400, "Participants should be a non-empty array");
+    }
+
+    const users = await User.findAll({
+      where: { id: { [Op.in]: participants } }
+    });
+
+    if (users.length !== participants.length) {
+      throw new ApiError(400, "Some users do not exist");
+    }
+
+    const server = await Server.findOne({
+      where: { id: serverId },
+      attributes: ['admin']
+    });
+
+    if (!server) {
+      throw new ApiError(404, "Server does not exist");
+    }
 
     const channel = await Channel.findOne({
-        where : {id : channelId}
-    })
-    if(!channel){
-        throw new ApiError(404,"Channel does not exist")
+      where: { id: channelId, serverId: serverId }
+    });
+
+    if (!channel) {
+      throw new ApiError(404, "Channel does not exist");
     }
 
-    if(channel.admin.toString() !== req.user.id.toString()){
-        throw new ApiError(403, "Only admin are allowed to remove participants")
+    if (server.admin.toString() !== req.user.id.toString()) {
+      throw new ApiError(403, "Only admin can remove participants");
     }
 
-    const existingparticipants = channel.participants || [];
-    if(!existingparticipants?.include(participantId)){
-        throw new ApiError(400,"Participants does not exist in the Channel")
+    if (participants.includes(server.admin) || participants.includes(req.user.id)) {
+      throw new ApiError(403, "Cannot remove admin himself");
     }
 
-    const updateParticipants = existingparticipants.filter((participant)=>participant.toString() !== participantId.toString())
+    const count = await ChannelUser.count({
+      where: { userId: { [Op.in]: participants }, channelId: channelId }
+    });
 
-    const updated = await Server.update({
-        members : updateParticipants},{
-        where : {id : participantId}
-    })
-    await Channel.save();
-    if(!updated){
-        throw new ApiError(500,"Internal Server_channel error");
-    }
-    const channel_Details = await Server.findOne({
-        where : {id : participantId},
-        ...channel_structure()
-    })
-    if(!channel_Details){
-        throw new ApiError(500,"Internal Server_channel Error,while removing participants")
+    if (count === 0) {
+      throw new ApiError(400, "Member does not exist in the Channel");
     }
 
-    emitSocketEvent(req, participantId, ChatEventEnum.LEAVE_CHAT_EVENT, channel_Details);
+    await channel.removeUser(participants);
+
+    const channelDetails = await Channel.findOne({
+      where: { id: channelId },
+      ...channel_structure()
+    });
+
+    if (!channelDetails) {
+      throw new ApiError(500, "Internal server_channel error, while removing participants");
+    }
+
+    participants.forEach((participant) => {
+      if (participant === req.user.id) return;
+      emitSocketEvent(
+        req,
+        participant.toString(),
+        ChatEventEnum.LEAVE_CHAT_EVENT,
+        channelDetails
+      );
+    });
 
     return res
-    .status(200)
-    .json(new ApiResponse(200, channel_Details, "Participant removed successfully from channel"));
-    }
-    catch(error){
-        console.log("Error while removing participant from channel",error);
-        throw new ApiError(500,"Internal server_channel error while removing participant");
+      .status(200)
+      .json(new ApiResponse(200, channelDetails, "Participant removed successfully from channel"));
+  } catch (error) {
+    console.log("Error while removing participant from channel", error);
+    throw new ApiError(500, "Internal server_channel error while removing participant");
+  }
+});
 
-    }
-})
-
-const getAllChannel = asyncHandler(async(req,res)=>{
-    const channel = await Channel.findAll({
-        where : {
-            participants : {
-                [Op.contains] : [req.user.id]
-            }
-        },
-        order : [['updatedAt','DESC']],
-        ...channel_structure(),
+const getAllChannel = asyncHandler(async (req, res) => {
+  try {
+    const { serverId } = req.params;
+    const channels = await Channel.findAll({
+      where: {
+        serverId: serverId,
+      },
+      order: [['updatedAt', 'DESC']],
     });
-    if(!channel){
-        throw new ApiError(400,"Internal server_channel error,while fetching all channels");
+
+    if (!channels) {
+      throw new ApiError(400, "Internal server_channel error, while fetching all channels");
     }
-    return res.
-    status(200).
-    json(
-        new ApiResponse(200,channel || [],"Channel fetched successfully")
-    );
-})
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, channels || [], "Channels fetched successfully"));
+  } catch (error) {
+    console.log("Error while fetching all channels", error);
+    throw new ApiError(500, "Internal Server Error while fetching all channels");
+  }
+});
 
 export {
-    SerarchAvailableUsers,
-    createChannel,
-    getChannelDetails,
-    renameChannel,
-    deleteChannel,
-    leaveChannel,
-    addNewParticipantinChannel,
-    removeParticipantFromChannel,
-    getAllChannel
-}
+  searchAvailableUsers,
+  createChannel,
+  getChannelDetails,
+  renameChannel,
+  deleteChannel,
+  leaveChannel,
+  addNewParticipantinChannel,
+  removeParticipantFromChannel,
+  getAllChannel
+};
+

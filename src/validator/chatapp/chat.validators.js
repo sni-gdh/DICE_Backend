@@ -10,10 +10,19 @@ const createAGroupChatValidator = ()=>{
     ];
 };
 
+const ParticipnatValidator = ()=>{
+    return [
+        body("participants").isArray({
+            min : 1,
+            max : 5
+        }).withMessage("participants must be an array with more than 1 member and less than 5 member")
+    ]
+}
+
 const updateGroupChatNameValidator = ()=>{
     return [
         body("name").trim().notEmpty().withMessage("Community name is required")
     ];
 };
 
-return {createAGroupChatValidator,updateGroupChatNameValidator}
+export {createAGroupChatValidator,updateGroupChatNameValidator,ParticipnatValidator}

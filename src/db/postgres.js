@@ -12,6 +12,8 @@ const pool = new Pool(
     }
 )
 
+export let PostgresdbInstance = undefined;
+
 const connectPgdb = async() =>{
     try{
         const connectionInstance = await pool.connect();

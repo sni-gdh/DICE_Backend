@@ -4,7 +4,7 @@ import {
   removeCookie,
   setCookie,
 } from "../../controllers/kitchensink/cookie.controller.js";
-import { cookieKeyQueryStringValidator } from "../../validator/kitchen-sink/cookie.validators.js";
+import {cookieKeyQueryStringValidator}  from "../../validator/kitchen-sink/cookie.validators.js";
 import { validate } from "../../validator/validate.js";
 
 const router = Router();

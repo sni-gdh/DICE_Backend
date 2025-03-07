@@ -1,5 +1,6 @@
-import winston, { error } from "winston"
-
+import winston from "winston"
+import pkg from "winston"
+const { error } = pkg
 // defining severity levels 
 const levels = {
     error : 0,

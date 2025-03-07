@@ -1,6 +1,6 @@
 import { Sequelize, DataTypes } from 'sequelize';
-import sequelize from '../db/postgres.js';
-import User from './user.models.js';
+import { sequelize } from '../db/postgres.js';
+import {User} from './centeralized.models.js';
 
 const Server = sequelize.define('Server', {
   server_name: {
@@ -9,27 +9,15 @@ const Server = sequelize.define('Server', {
   },
   admin: {
     type: DataTypes.INTEGER,
-    refrences:{
-      model : User,
-      key : 'id'
-    },
     allowNull: false,
   },
   avatar: {
     type: DataTypes.JSON, // Store as a stringified JSON
     allowNull: false,
     defaultValue: {
-      url: "https://via.placeholder.com/200x200.png",
+      url: "https://res.cloudinary.com/ddyuwxg3o/image/upload/v1741023486/car_dscuzg.jpg",
       localPath: ""
     }
-  },
-  members: {
-    type: DataTypes.ARRAY(DataTypes.INTEGER),
-    allowNull: false,
-  },
+  }
 });
-
-User.hasMany(Server,{foreignKey : "admin",as : "adminServer"})
-Server.belongsTo(User,{foreignKey : "admin", as : "admin"})
-
 export default Server;

@@ -41,4 +41,3 @@ export const getLoggedInUser = asyncHandler(async(req,res,next)=>{
         next()
     }
 });
-

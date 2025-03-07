@@ -12,4 +12,4 @@ const redirectToTheUrlValidator = ()=>{
     ];
 };
 
-return { redirectToTheUrlValidator }
+export { redirectToTheUrlValidator }
