@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken"
 import {Server , Socket} from "socket.io"
 import {ApiError} from "../utils/ApiError.js"
 import {AvailableChatEvents , ChatEventEnum } from "../constants.js"
-import User from "../models/user.models.js"
+import User from "../models/auth/user.models.js"
 /**
  * @description this is a function which is responsible to allow user to join the chat represented by the chat Id. This event happenes when user switches between the chats
  * @param {Socket<import("socket.io/dist/typed-events").DefaultEventsMap, import("socket.io/dist/typed-events").DefaultEventsMap, import("socket.io/dist/typed-events").DefaultEventsMap, any>} socket

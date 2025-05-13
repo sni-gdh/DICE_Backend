@@ -11,7 +11,9 @@ import {
     updateUserAvatar,
     verifyUserEmail,
     resendEmailVerification,
-    resetForgottenPassword
+    resetForgottenPassword,
+    getAppliedUserList,
+    approveUserRole
      } from "../controllers/user/user.controllers.js";
 import { 
     verifyJWT
@@ -23,8 +25,10 @@ import {
   userForgotPasswordValidator,
   userLoginValidator,
   userResetForgottenPasswordValidator,
+  userAssignRoleValidator
 } from "../validator/user/user.validator.js"
 import {validate} from "../validator/validate.js"
+import {PostgresPathVariableValidator} from '../validator/common/db.validators.js'
 import {upload} from "../middleware/multer.middleware.js"
 
 
@@ -44,6 +48,17 @@ router
     userResetForgottenPasswordValidator(),
     validate,
     resetForgottenPassword
+  );
+router
+.route("/role-approval").get(getAppliedUserList);
+
+router
+  .route("/set-role/:userId")
+  .patch(
+    PostgresPathVariableValidator("userId"),
+    userAssignRoleValidator(),
+    validate,
+    approveUserRole
   );
 
 // secure routes.

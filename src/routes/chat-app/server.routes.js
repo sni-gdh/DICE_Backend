@@ -10,7 +10,7 @@ import {
     getAllServers,
     searchAvailableUsers
 } from "../../controllers/chatapp/server.controller.js";
-import { verifyJWT } from "../../middleware/auth.middleware.js";
+import { verifyJWT,verifyPermission } from "../../middleware/auth.middleware.js";
 import {
   createAGroupChatValidator,
   updateGroupChatNameValidator,
@@ -18,6 +18,8 @@ import {
 import { PostgresPathVariableValidator,mongoIdPathVariableValidator } from "../../validator/common/db.validators.js";
 import { validate } from "../../validator/validate.js";
 import {upload} from "../../middleware/multer.middleware.js"
+import { RolesEnum } from "../../constants.js";
+
 
 const router = Router();
 
@@ -30,28 +32,29 @@ router.route("/:ServerId/users").get(searchAvailableUsers);
 
 router
   .route("/create")
-  .post(upload.single("avatar"),createAGroupChatValidator(), validate, createServer);
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),createAGroupChatValidator(), validate, createServer);
 
 router
   .route("/:ServerId/currentServer")
   .get(PostgresPathVariableValidator("ServerId"), validate, getServerDetails)
-  .patch(
+  .patch(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("ServerId"),
     updateGroupChatNameValidator(),
     validate,
     renameServer
   )
-  .delete(PostgresPathVariableValidator("ServerId"), validate, deleteServer);
+  .delete(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),PostgresPathVariableValidator("ServerId"), validate, deleteServer);
 
 router
   .route("/Participant/:ServerId/:memberId")
-  .post(
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("ServerId"),
     PostgresPathVariableValidator("memberId"),
     validate,
     addNewParticipantinServer
   )
   .delete(
+    verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("ServerId"),
     PostgresPathVariableValidator("memberId"),
     validate,

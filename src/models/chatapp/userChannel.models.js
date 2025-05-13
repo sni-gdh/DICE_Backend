@@ -1,13 +1,13 @@
-import { sequelize } from '../db/postgres.js';
+import { sequelize } from '../../db/postgres.js';
 import { DataTypes } from 'sequelize';
 
 const ChannelUser = sequelize.define('ChannelUser', {
     channelId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
       allowNull: false,
     },
     userId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
       allowNull: false,
     },
   });

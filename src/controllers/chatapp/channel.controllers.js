@@ -1,7 +1,7 @@
 // todo Add function to update avatar for Channel and its details,aff function to let admin leave channel while assigning new admin.
 import { Op } from 'sequelize';
 import { ChatEventEnum } from '../../constants.js';
-import { User, Server, Channel, Thread, Message, ChannelUser, userServer } from '../../models/centeralized.models.js';
+import { User, Server, Channel, Thread, Message, ChannelUser, userServer } from '../../models/chatapp/centeralized.models.js';
 import { emitSocketEvent } from '../../scoket/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';

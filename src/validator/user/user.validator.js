@@ -18,7 +18,7 @@ const userRegisterValidator = ()=>{
         isLength({min : 3}).
         withMessage("username must be at least 3 character long"),
         body("password").trim().notEmpty().withMessage("Password is required"),
-        body("role").optional().isIn(AvailableUserRoles).withMessage("Invalid user role"),
+        body("token").notEmpty().withMessage("Invalid user role"),
     ];
 };
 const userLoginValidator = ()=>{
@@ -50,7 +50,10 @@ const userResetForgottenPasswordValidator = ()=>{
 
 const userAssignRoleValidator = ()=>{
     return[
-        body("role").optional().isIn(AvailableUserRoles).withMessage("Invalid user role")
+        body("status").notEmpty()
+        .customSanitizer(value => value.toUpperCase())
+        .isIn(AvailableUserRoles)
+        .withMessage("Invalid user role")
     ];
 };
 

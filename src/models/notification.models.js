@@ -7,23 +7,22 @@ const notificationschema = new mongoose.Schema({
     },
     type : {
         type : String,
-        enum : ["MESSAGE","MENTION","REPLY","BLOCK","REPORT","ACCEPT","REJECT","FOLLOW"]
+        enum : ["MESSAGE","MENTION","COMMENT","FOLLOWER","LIKE","POST","ACCEPT","BLOCK","REJECT","REPORT"]
     },
-    related_id : {
+    title:{
         type : String,
     },
-    content:{
+    body : {
         type : String,
-        required:true,
     },
-    read:{
+    data : {
+        type : Object
+    },
+    isRead:{
         type : Boolean,
         default : false
     },
-    read_at:{
-        type : Date
-    }
 },{timestamps: true})
 
 
-export const notification = mongoose.models("notification",notificationschema)
+export const notification = mongoose.model("notification",notificationschema)

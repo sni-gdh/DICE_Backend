@@ -4,22 +4,25 @@ import {ApiError} from "../../utils/ApiError.js"
 
 import {ApiResponse} from "../../utils/ApiResponse.js"
 
-import { uplodOnCloudinary } from "../../utils/Cloudinary.js"
-
+import {AvailableUserRoles} from '../../constants.js'
+import {sendNotification} from '../../controllers/notification/notificaiton.controllers.js'
 import jwt from "jsonwebtoken";
 import crypto from "crypto"
 import {emailVerificationMailgenContent,
     forgotPasswordMailgenContent,
+    ConfirmRoleMailgenContent,
     sendEmail
 } from "../../utils/mail.js";
 
-import User from "../../models/user.models.js"
+import User from "../../models/auth/user.models.js"
 import {
     getLocalPath,
     getStaticFilePath,
     removeLocalFile,
   } from "../../utils/helpers.js";
-  import { Op } from "sequelize";
+  import { Op, where } from "sequelize";
+
+
 const generateAceessandRefreshTokens = async (userId) => {
     try{
         const user = await User.findByPk(userId);
@@ -41,31 +44,29 @@ const generateAceessandRefreshTokens = async (userId) => {
 
 
 const registerUser = asyncHandler(async (req,res) => {
-    const {name,univ_mail,password,program,course,section,join_year} = Object.assign({},req.body) ;
-    console.log(req.body);
+    const {name,univ_mail,password,token} = Object.assign({},req.body) ;
     if(
-        [name,univ_mail,password,program,course,section,join_year].some((field)=>field?.trim() === "")
+        [name,univ_mail,password,token].some((field)=>field?.trim() === "")
     ){
         throw new ApiError(409,"All fields are required");
+    }
+    if(!token){
+        throw new ApiError(409,"token is required")
     }
     const existedUser = await User.findOne({
         where : {univ_mail : univ_mail},
         raw  : true
     })
-    console.log(existedUser);
     if(existedUser)
     {
         throw new ApiError(401,"User exits")
     }
-
     const user = await User.create({
         name,
         univ_mail,
         password,
-        program,
-        course,
-        section,
-        join_year,
+        role:"NAN",
+        token,
         isEmailVerified: false,
       });
       
@@ -104,8 +105,18 @@ const registerUser = asyncHandler(async (req,res) => {
         ),
       });
     //   ****************************************************************
-    // const user  = await executeQuery(`insert into "GroupChat"."user" ("name","univ_mail","password","avatar","program","course","section","join_year","created_at","update_at",emailVerificationToken,emailVerificationExpiry) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) returning "user_id"`,[name,univ_mail,encryptedPassword,avatar.url,program,course,section,join_year,created_at,updated_at,emailVerificationToken,emailVerificationTokenExpiry])
-    // const createdUser = await executeQuery(`select "name","univ_mail","avatar","program","course","section","join_year","created_at","update_at" from "GroupChat"."user" where "user_id" = $1`,[user.user_id]);
+    // ******************************ROLE APPROVAL MAIL START**********************************
+    await sendEmail({
+        email: `${process.env.ADMIN_MAIL}`,
+        subject: "Please approve the user role",
+        mailgenContent: ConfirmRoleMailgenContent(
+          `${process.env.ADMIN_NAME}`,
+          `${req.protocol}://${req.get(
+            "host"
+          )}/api/v1/users/role-approval`
+        ),
+      });
+    // *****************************ROLE APPROVAL MAIL END***********************************
     const createdUser = await User.findByPk(user.id, {
         attributes: { exclude: ['password', 'refreshToken', 'emailVerificationToken', 'emailVerificationExpiry'] }
       });
@@ -139,10 +150,15 @@ const loginUser = asyncHandler(async (req,res) => {
             throw new ApiError(404,"User does not exist")
         }
 
+        if(user.role === "NAN"){
+            throw new ApiError(401,"User role is not approved yet");
+        }
+
         const isPasswordValid = await user.isPasswordCorrect(password);
         if(!isPasswordValid){
             throw new ApiError(401,"Invalid user credentials")
         }
+        
         const {accessToken , refreshToken} = await generateAceessandRefreshTokens(user.id)
         // const logedInUser = await executeQuery(`select "user_id","name","univ_mail","avatar","program","course","section","join_year" from "GroupChat"."user" where "user_id" = $1`,[user[0].user_id])
         const logedInUser = await User.findByPk(user.id,{
@@ -460,6 +476,119 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
       .json(new ApiResponse(200, updatedUser, "Avatar updated successfully"));
   });
 
+  const getAppliedUserList = asyncHandler(async (req, res) => {
+    const { page = 1, limit = 10 } = req.query;
+  
+    const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNumber = Math.max(parseInt(limit, 10) || 10, 1);
+  
+    const offset = (pageNumber - 1) * limitNumber;
+  
+    const { count, rows: users } = await User.findAndCountAll({
+      where: { role: "NAN" }, // Make sure this value is valid
+      attributes: {
+        exclude: [
+          "password",
+          "refreshToken",
+          "emailVerificationToken",
+          "emailVerificationExpiry",
+          "isEmailVerified",
+          "forgotPasswordToken",
+          "forgotPasswordExpiry",
+          "token",
+        ],
+      },
+      limit: limitNumber,
+      offset: offset,
+      order: [["createdAt", "DESC"]],
+    });
+  
+    if (!count) {
+      throw new ApiError(404, "No users found");
+    }
+  
+    const totalPages = Math.ceil(count / limitNumber);
+  
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          totalItems: count,
+          totalPages,
+          currentPage: pageNumber,
+          users,
+        },
+        "User list fetched successfully"
+      )
+    );
+  });
+  
+const approveUserRole = asyncHandler(async(req,res)=>{
+        const {userId} = req.params;
+        const {status} = req.body;
+        
+        if(!userId || !status)
+        {
+            throw new ApiError(400,"userId and status are required")
+        }
+        const user = await User.findByPk(userId);
+        const NormalizeStatus = status.toUpperCase();
+        if(!user){
+            throw new ApiError(404,"User does not exist")
+        }
+        
+        if(user.role !== "NAN"){
+            throw new ApiError(400,"User role is already approved");
+        }
+        
+        if(NormalizeStatus === "DELETE"){
+            try {
+                    //await sendNotification("REJECT",user.id, user.token, [user.name, userId]);
+                    await User.destroy({
+                        where: { id: userId },
+                    });
+                    return res.status(200)
+                    .json(
+                        new ApiResponse(200,{
+                            approved : false
+                        },"User is deleted")
+                    );
+                } 
+            catch (error) {
+                    throw new ApiError(500, "Failed to delete user or send notification");
+                }
+        }
+        else if (Object.values(AvailableUserRoles).includes(NormalizeStatus)) {
+            await User.update(
+                {
+                    role : NormalizeStatus
+                },
+                {
+                    where : {
+                        id : userId
+                    }
+                }
+            )
+        } else {
+            throw new ApiError(400, "Invalid status");
+        }
+        const UpdatedUser = await User.findByPk(userId,{
+            attributes : ["id","name","token","role"]
+        })
+        try {
+            //await sendNotification("ACCEPT",user.id, UpdatedUser.token, [UpdatedUser.name, userId]);
+        } catch (error) {
+            console.error("Failed to send notification:", error);
+            throw new ApiError(400,"Failed to send notification");
+        }
+        return res.status(200)
+        .json(
+            new ApiResponse(200,{
+                UpdatedUser,
+                approved : true
+            },"User role is approved")
+        );
+})
 
 export {
     registerUser,
@@ -473,5 +602,7 @@ export {
     verifyUserEmail,
     resendEmailVerification,
     forgotPasswordRequest,
-    resetForgottenPassword
+    resetForgottenPassword,
+    getAppliedUserList,
+    approveUserRole
 }

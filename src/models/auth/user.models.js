@@ -1,12 +1,18 @@
 import { DataTypes, DATE } from 'sequelize';
-import {sequelize} from '../db/postgres.js';
+import {sequelize} from '../../db/postgres.js';
 import bcrypt from "bcrypt"
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
-import { USER_TEMPORARY_TOKEN_EXPIRY } from '../constants.js'
+import { USER_TEMPORARY_TOKEN_EXPIRY } from '../../constants.js'
 // import ChannelUser from './userChannel.models.js'
 // import Server from './server.models.js'
 const User = sequelize.define('User', {
+  id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+        allowNull: false,
+    },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -34,21 +40,14 @@ const User = sequelize.define('User', {
       localPath: ""
     }
   },
-  program : {
-    type:DataTypes.STRING,
-    allowNULL:false
+  role : {
+    type : DataTypes.ENUM("STUDENT", "PRIVILEGED_STUDENT","FACULTY", "ADMIN","NAN"),
+    defaultValue : "NAN",
+    allowNull : false,
   },
-  course : {
-    type:DataTypes.STRING,
-    allowNULL:false
-  },
-  section : {
-    type:DataTypes.STRING,
-    allowNULL:false
-  },
-  join_year : {
-    type:DataTypes.STRING,
-    allowNULL:false
+  token : {
+    type : DataTypes.STRING,
+    allownull : false,
   },
   refreshtoken:{
     type:DataTypes.STRING,

@@ -10,7 +10,7 @@ import {
   removeParticipantFromChannel,
   getAllChannel
 } from "../../controllers/chatapp/channel.controllers.js";
-import { verifyJWT } from "../../middleware/auth.middleware.js";
+import { verifyJWT,verifyPermission } from "../../middleware/auth.middleware.js";
 import {
   createAGroupChatValidator,
   updateGroupChatNameValidator,
@@ -19,6 +19,7 @@ import {
 import {PostgresPathVariableValidator } from "../../validator/common/db.validators.js";
 import { validate } from "../../validator/validate.js";
 import {upload} from "../../middleware/multer.middleware.js"
+import { RolesEnum } from "../../constants.js"; 
 const router = Router();
 
 router.use(verifyJWT);
@@ -30,30 +31,30 @@ router.route("/:serverId/:channelId/users").get(PostgresPathVariableValidator("s
 
 router
   .route("/:serverId/create")
-  .post(upload.single("avatar"),PostgresPathVariableValidator('serverId'),createAGroupChatValidator(), validate,createChannel);
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),PostgresPathVariableValidator('serverId'),createAGroupChatValidator(), validate,createChannel);
 
 router
   .route("/:serverId/:channelId/currentChannel")
   .get(PostgresPathVariableValidator("serverId"),PostgresPathVariableValidator("channelId"), validate, getChannelDetails)
-  .patch(
+  .patch(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("serverId"),
     PostgresPathVariableValidator("channelId"),
     updateGroupChatNameValidator(),
     validate,
     renameChannel
   )
-  .delete(PostgresPathVariableValidator("serverId"),PostgresPathVariableValidator("channelId"), validate, deleteChannel);
+  .delete(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),PostgresPathVariableValidator("serverId"),PostgresPathVariableValidator("channelId"), validate, deleteChannel);
 
 router
   .route("/:serverId/:channelId/Participant")
-  .post(
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("serverId"),
     PostgresPathVariableValidator("channelId"),
     ParticipnatValidator(),
     validate,
     addNewParticipantinChannel
   )
-  .delete(
+  .delete(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("serverId"),
     PostgresPathVariableValidator("channelId"),
     ParticipnatValidator(),

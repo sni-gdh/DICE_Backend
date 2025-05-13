@@ -11,7 +11,7 @@
 // todo Add function to update avatar for server and its details, assign admin to someone before leaving the group.
 
 import { ChatEventEnum } from '../../constants.js';
-import { User, Server, Channel, Thread, Message, userServer } from '../../models/centeralized.models.js';
+import { User, Server, Channel, Thread, Message, userServer } from '../../models/chatapp/centeralized.models.js';
 import { emitSocketEvent } from '../../scoket/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';

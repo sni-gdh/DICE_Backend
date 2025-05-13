@@ -1,5 +1,5 @@
-import {sequelize} from '../db/postgres.js'
-import User from './user.models.js'
+import {sequelize} from '../../db/postgres.js'
+import User from './../auth/user.models.js'
 import Server from './server.models.js'
 import Channel from './channel.models.js'
 import Thread from './threads.models.js'
@@ -18,5 +18,5 @@ export {
     Thread,
     Message,
     userServer,
-    ChannelUser
+    ChannelUser,
 }

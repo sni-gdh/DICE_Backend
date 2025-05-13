@@ -1,6 +1,6 @@
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ChatEventEnum } from "../../constants.js";
-import { User, Channel, Thread, Message, ChannelUser } from '../../models/centeralized.models.js';
+import { User, Channel, Thread, Message, ChannelUser } from '../../models/chatapp/centeralized.models.js';
 import { ApiError } from "../../utils/ApiError.js";
 import { emitSocketEvent } from "../../scoket/index.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
@@ -11,7 +11,7 @@ import {
 } from "../../utils/helpers.js";
 import { Op } from 'sequelize';
 import mongoose from "mongoose";
-
+import {sendNotification} from "../notification/notificaiton.controllers.js"
 
 // todo : Make reply threads. 
 const threadMessageStructure = () => {
@@ -122,12 +122,22 @@ const sendThread = asyncHandler(async (req, res) => {
   }
   const users = await ChannelUser.findAll({
     where : {channelId : channelId},
-    attributes : ['userId']
+    attributes : ['userId'],
+    include : [
+      {
+        model : User,
+        attributes : ['name','token']
+      }
+    ]
   })
-
   users.forEach((user) => {
     if (user.userId.toString() === req.user.id.toString()) return;
-
+    // Notification for messages
+    try{
+        sendNotification("newMessage",user.User.token,[user.User.name,channelId])
+    }catch(err){
+      console.log("Failde to send notification to user");
+    }
     // emit the receive message event to the other participants with received message as the payload
     emitSocketEvent(
       req,

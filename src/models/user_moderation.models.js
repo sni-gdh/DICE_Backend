@@ -6,7 +6,7 @@ const userModerationSchema = new mongoose.Schema({
     },
     status : {
         type : String,
-        enum : ["ACTIVE" , "BLOCKED" , "Reported"],
+        enum : ["ACTIVE" , "BLOCKED" , "REPORTED","BANNED"],
         default : "ACTIVE"
     },
     violation_count:{

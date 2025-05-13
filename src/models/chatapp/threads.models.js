@@ -1,17 +1,23 @@
 import { DataTypes } from 'sequelize';
-import {sequelize} from '../db/postgres.js';
+import {sequelize} from '../../db/postgres.js';
 
 const Thread = sequelize.define('Thread', {
+  id : {
+    type : DataTypes.UUID,
+    defaultValue : DataTypes.UUIDV4,
+    primaryKey : true,
+    allowNull:false,
+  },
   channelId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
   },
   senderId : {
-    type : DataTypes.INTEGER,
+    type : DataTypes.UUID,
     allowNull : false,
   },
   parent_id : { // Self refrencing for nesting threads
-    type : DataTypes.INTEGER,
+    type : DataTypes.UUID,
     defaultValue : undefined,
   },
   is_edited : {

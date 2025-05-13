@@ -103,8 +103,29 @@ const transporter = nodemailer.createTransport({
     };
   };
 // ********************************************************************************************************************
-  export {
+// ********************************************************************************************************************
+const ConfirmRoleMailgenContent = (username,roleListURL)=>{
+    return {
+        body: {
+            name: username,
+            intro: 'We got a request to confirm the role for the account',
+            action: {
+                instructions: 'To see the pending list click on the following button or link:',
+                button: {
+                    color: '#22BC66', // Optional action button color
+                    text: 'Approve the role',
+                    link: roleListURL,
+                }
+            },
+            outro: 'Need help, or have questions? Just reply to this email, we\'d love to help.'
+        },
+    };
+  };
+
+
+export {
     sendEmail,
     emailVerificationMailgenContent,
-    forgotPasswordMailgenContent
+    forgotPasswordMailgenContent,
+    ConfirmRoleMailgenContent
   }

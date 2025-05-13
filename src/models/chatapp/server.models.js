@@ -1,14 +1,20 @@
 import { Sequelize, DataTypes } from 'sequelize';
-import { sequelize } from '../db/postgres.js';
+import { sequelize } from '../../db/postgres.js';
 import {User} from './centeralized.models.js';
 
 const Server = sequelize.define('Server', {
+  id : {
+    type : DataTypes.UUID,
+    defaultValue : DataTypes.UUIDV4,
+    primaryKey : true,
+    allowNull:false,
+  },
   server_name: {
     type: DataTypes.STRING,
     allowNull: false,
   },
   admin: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
   },
   avatar: {

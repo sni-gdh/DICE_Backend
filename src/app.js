@@ -68,12 +68,20 @@ app.use(morganMiddleware);
 import { errorHandler } from "./middleware/error.middleware.js";
 import healthcheckRouter from "./routes/healthcheck.routes.js"
 
-// import app routes  for chat and social media
+// import app routes  for chat.
 import userRouter from './routes/user.routes.js';
 
 import channelRouter from './routes/chat-app/channel.routes.js'
 import serverRouter from './routes/chat-app/server.routes.js'
 import messageRouter from './routes/chat-app/message.routes.js'
+
+// import media routes for social media.
+import socialBookmark from "./routes/socialMedia/bookmark.routes.js";
+import socialComment from "./routes/socialMedia/comment.routes.js";
+import socialFollow from "./routes/socialMedia/follow.routes.js";
+import socialLike from "./routes/socialMedia/like.routes.js";
+import socialPost from "./routes/socialMedia/post.routes.js";
+import socialProfile from "./routes/socialMedia/profile.routes.js";
 
 // import kitchenSink 
 import cookieRouter from './routes/kitchen-sink/cookie.routes.js'
@@ -93,7 +101,13 @@ app.use("/api/v1/users",userRouter)
 app.use("/api/v1/chat/server",serverRouter)
 app.use("/api/v1/chat/server/channel",channelRouter)
 app.use("/api/v1/chat/server/channel/messages", messageRouter)
-
+// social-app routes declaration.
+app.use("/api/v1/social-media/profile",socialProfile );
+app.use("/api/v1/social-media/follow",socialFollow );
+app.use("/api/v1/social-media/posts", socialPost);
+app.use("/api/v1/social-media/like", socialLike);
+app.use("/api/v1/social-media/bookmarks", socialBookmark);
+app.use("/api/v1/social-media/comments", socialComment);
 
 // * Kitchen sink apis
 app.use("/api/v1/kitchen-sink/http-methods", httpmethodRouter);

@@ -1,14 +1,20 @@
 import { DataTypes } from 'sequelize';
-import {sequelize} from '../db/postgres.js';
+import {sequelize} from '../../db/postgres.js';
 
 
 const Channel = sequelize.define('Channel', {
+  id : {
+    type : DataTypes.UUID,
+    defaultValue : DataTypes.UUIDV4,
+    primaryKey : true,
+    allowNull:false,
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
   },
   serverId: {
-    type: DataTypes.INTEGER,
+    type: DataTypes.UUID,
     allowNull: false,
   },
   avatar: {
