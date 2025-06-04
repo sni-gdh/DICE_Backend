@@ -19,20 +19,20 @@ import { asyncHandler } from '../../utils/asyncHandler.js';
 import { removeLocalFile, getLocalPath, getStaticFilePath } from '../../utils/helpers.js';
 import { Op } from 'sequelize';
 
-const server_structure = () => {
-  return {
-    include: [
-      {
-        model: User,
-        attributes: ["id", "name", "univ_mail"],
-        through: { attributes: [] }
-      },
-      {
-        model: Channel,
-      },
-    ]
-  };
-};
+// const server_structure = () => {
+//   return {
+//     include: [
+//       {
+//         model: User,
+//         attributes: ["id", "name", "univ_mail"],
+//         through: { attributes: [] }
+//       },
+//       {
+//         model: Channel,
+//       },
+//     ]
+//   };
+// };
 
 const deleteCascadeServerMessages = async (serverId) => {
   try {
@@ -82,16 +82,33 @@ const deleteCascadeServerMessages = async (serverId) => {
   }
 };
 
+const serachAvailableUserList = asyncHandler(async(req,res)=>{
+  try {
+    // Exclude the currently logged-in user
+    const users = await User.findAll({
+      where: {
+        id: { [Op.ne]: req.user.id }
+      },
+      attributes: ['id', 'avatar', 'name', 'univ_mail']
+    });
+    return res
+      .status(200)
+      .json(new ApiResponse(200, users, "Users fetched successfully"));
+  } catch (error) {
+    console.log('Error fetching available users', error);
+    throw new ApiError(500, "Internal server error");
+  }
+})
+
 const searchAvailableUsers = asyncHandler(async (req, res) => {
   try {
     const { serverId } = req.params;
     const server = await Server.findByPk(serverId, {
-      include: {
+      include: [{
         model: User,
         attributes: ['id', 'name', 'avatar', 'univ_mail'],
         through: { attributes: [] }
-      },
-      through: { attributes: [] }
+      }],
     });
     return res
       .status(200)
@@ -139,15 +156,29 @@ const createServer = asyncHandler(async (req, res) => {
     });
 
     // Create default channel
-    const defaultChannel = await Channel.create({
-      name: "Announcement",
-      serverId: server.id,
-    });
-    await defaultChannel.addUsers(serverMembers);
+    try {
+  const defaultChannel = await Channel.create({
+    name: "Announcement",
+    serverId: server.id,
+    admin : req.user.id
+  });
+  await defaultChannel.addUsers(serverMembers);
+    } catch (error) {
+      console.error("Error adding users to channel:", error);
+    }
 
     const serverStructure = await Server.findOne({
-      where: { id: server.id },
-      ...server_structure()
+      where: { id: server.id }, 
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "univ_mail"],
+          through: { attributes: [] }
+        },
+        {
+          model: Channel,
+        },
+      ]
     });
 
     if (!serverStructure) {
@@ -176,9 +207,21 @@ const createServer = asyncHandler(async (req, res) => {
 const getServerDetails = asyncHandler(async (req, res) => {
   try {
     const { serverId } = req.params;
+    if(!serverId){
+      throw new ApiError(400,"serverId is undefined")
+    }
     const serverDetails = await Server.findOne({
       where: { id: serverId },
-      ...server_structure()
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "univ_mail","avatar"],
+          through: { attributes: [] }
+        },
+        {
+          model: Channel,
+        },
+      ]
     });
 
     if (!serverDetails) {
@@ -201,7 +244,6 @@ const renameServer = asyncHandler(async (req, res) => {
     const server = await Server.findOne({
       where: { id: serverId }
     });
-
     if (!server) {
       throw new ApiError(404, "Server does not exist");
     }
@@ -218,17 +260,24 @@ const renameServer = asyncHandler(async (req, res) => {
 
     const serverDetails = await Server.findOne({
       where: { id: server.id },
-      ...server_structure()
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "univ_mail"],
+          through: { attributes: [] }
+        },
+        {
+          model: Channel,
+        },
+      ]
     });
-
     if (!serverDetails) {
       throw new ApiError(500, "Internal server error");
     }
-
-    serverDetails.members.forEach((member) => {
+    serverDetails.Users.forEach((User) => {
       emitSocketEvent(
         req,
-        member.id.toString(),
+        User.id.toString(),
         ChatEventEnum.UPDATE_SERVER_NAME_EVENT,
         serverDetails
       );
@@ -248,7 +297,16 @@ const deleteServer = asyncHandler(async (req, res) => {
     const { serverId } = req.params;
     const server = await Server.findOne({
       where: { id: serverId },
-      ...server_structure()
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "univ_mail"],
+          through: { attributes: [] }
+        },
+        {
+          model: Channel,
+        },
+      ]
     });
 
     if (!server) {
@@ -265,11 +323,11 @@ const deleteServer = asyncHandler(async (req, res) => {
 
     await deleteCascadeServerMessages(serverId);
 
-    server.members.forEach((member) => {
-      if (member.id === req.user.id) return;
+    server.Users.forEach((User) => {
+      if (User.id === req.user.id) return;
       emitSocketEvent(
         req,
-        member.id.toString(),
+        User.id.toString(),
         ChatEventEnum.LEAVE_SERVER_EVENT,
         server
       );
@@ -318,7 +376,16 @@ const leaveServer = asyncHandler(async (req, res) => {
 
     const serverDetails = await Server.findOne({
       where: { id: serverId },
-      ...server_structure(),
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "univ_mail"],
+          through: { attributes: [] }
+        },
+        {
+          model: Channel,
+        },
+      ]
     });
 
     if (!serverDetails) {
@@ -368,7 +435,16 @@ const addNewParticipantinServer = asyncHandler(async (req, res) => {
 
     const serverDetails = await Server.findOne({
       where: { id: serverId },
-      ...server_structure()
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "univ_mail"],
+          through: { attributes: [] }
+        },
+        {
+          model: Channel,
+        },
+      ]
     });
 
     if (!serverDetails) {
@@ -425,7 +501,16 @@ const removeParticipantFromServer = asyncHandler(async (req, res) => {
 
     const serverDetails = await Server.findOne({
       where: { id: serverId },
-      ...server_structure()
+      include: [
+        {
+          model: User,
+          attributes: ["id", "name", "univ_mail"],
+          through: { attributes: [] }
+        },
+        {
+          model: Channel,
+        },
+      ]
     });
 
     if (!serverDetails) {
@@ -477,7 +562,8 @@ export {
   addNewParticipantinServer,
   removeParticipantFromServer,
   getAllServers,
-  searchAvailableUsers
+  searchAvailableUsers,
+  serachAvailableUserList
 };
 
 

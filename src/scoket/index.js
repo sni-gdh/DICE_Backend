@@ -56,10 +56,7 @@ const initializeSocketIO = (io)=>{
                 throw new ApiError(400,"Un-authorized Handshake,Token is missing");
             }
             const decodeToken = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
-            const user = User.findByPk({
-                where : { id : decodeToken?.id },
-            })
-            // const user = await executeQuery(`select "name","univ_mail","avatar","program","course","section","join_year","created_at","update_at" from "GroupChat"."user" where "user_id" = $1`,[decodeToken?._id]);
+            const user = await User.find(decodeToken?.id )
             if(!user)
             {
                 throw new ApiError(401,"Un-authorized Handshake,Token is Invalid");

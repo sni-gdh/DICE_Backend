@@ -50,9 +50,6 @@ const registerUser = asyncHandler(async (req,res) => {
     ){
         throw new ApiError(409,"All fields are required");
     }
-    if(!token){
-        throw new ApiError(409,"token is required")
-    }
     const existedUser = await User.findOne({
         where : {univ_mail : univ_mail},
         raw  : true
@@ -70,30 +67,30 @@ const registerUser = asyncHandler(async (req,res) => {
         isEmailVerified: false,
       });
       
-    if (!req.file?.filename) {
-        throw new ApiError(400, "Avatar image is required");
-    }
-    
-    // get avatar file system url and local path
-    const avatarUrl = getStaticFilePath(req, req.file?.filename);
-    const avatarLocalPath = getLocalPath(req.file?.filename);
+    // if (!req.file?.filename) {
+    //     throw new ApiError(400, "Avatar image is required");
+    // }
+    // // get avatar file system url and local path
+    // const avatarUrl = getStaticFilePath(req, req.file?.filename);
+    // const avatarLocalPath = getLocalPath(req.file?.filename);
 
-    await User.update(
-        {
-            avatar: {
-            url: avatarUrl,
-            localPath: avatarLocalPath,
-            },
-        },
-        {
-            where: { id: user.id },
-        }
-        );
+    // await User.update(
+    //     {
+    //         avatar: {
+    //         url: avatarUrl,
+    //         localPath: avatarLocalPath,
+    //         },
+    //     },
+    //     {
+    //         where: { id: user.id },
+    //     }
+    //     );
     const { unHashedToken, hashedToken, tokenExpiry } = user.generateTemporaryToken();
     user.emailVerificationToken = hashedToken;
     user.emailVerificationExpiry = tokenExpiry;
     await user.save();
     // send email verification mail to the user. ****important**********
+    console.log("object1");
     await sendEmail({
         email: univ_mail,
         subject: "Please verify your email",
@@ -106,6 +103,7 @@ const registerUser = asyncHandler(async (req,res) => {
       });
     //   ****************************************************************
     // ******************************ROLE APPROVAL MAIL START**********************************
+    console.log("object2");
     await sendEmail({
         email: `${process.env.ADMIN_MAIL}`,
         subject: "Please approve the user role",
@@ -131,16 +129,9 @@ const registerUser = asyncHandler(async (req,res) => {
 // lognin user
 const loginUser = asyncHandler(async (req,res) => {
     const {name,univ_mail,password} = req.body;
-        // req.body -> data
-        // univ_mail
-        // find user 
-        // password check
-        // access and refresh token 
-        // send cookies
         if(!name && !univ_mail){
             throw new ApiError(400,"name or univ_mail is required")
         }
-        // const user  = executeQuery(`select * from "GroupChat"."user" where "univ_mail" = $1 or "name" = $2`,[univ_mail,name]);
         const user = await User.findOne({
             where:{
                 [Op.or]: [{ name : name }, { univ_mail : univ_mail }],
@@ -160,7 +151,6 @@ const loginUser = asyncHandler(async (req,res) => {
         }
         
         const {accessToken , refreshToken} = await generateAceessandRefreshTokens(user.id)
-        // const logedInUser = await executeQuery(`select "user_id","name","univ_mail","avatar","program","course","section","join_year" from "GroupChat"."user" where "user_id" = $1`,[user[0].user_id])
         const logedInUser = await User.findByPk(user.id,{
             attributes :{exclude : ["password","refreshToken","emailVerificationToken","emailVerificationExpiry"]}
         })
@@ -170,7 +160,7 @@ const loginUser = asyncHandler(async (req,res) => {
             secure : true
         }
 
-        return res.status(200).cookie("accessToken",accessToken,options).cookie("refreshToken",refreshToken,options).json(
+        return res.status(201).cookie("accessToken",accessToken,options).cookie("refreshToken",refreshToken,options).json(
             new ApiResponse(200,{
                 user : logedInUser,accessToken,refreshToken
             },"User logged in successfully")

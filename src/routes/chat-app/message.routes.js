@@ -28,10 +28,10 @@ router
 //Delete message route based on Message id
 
 router
-  .route("/:channelId/:messageId")
+  .route("/:channelId/:threadId")
   .delete(
     PostgresPathVariableValidator("channelId"),
-    PostgresPathVariableValidator("messageId"),
+    PostgresPathVariableValidator("threadId"),
     validate,
     deleteMessage
   );

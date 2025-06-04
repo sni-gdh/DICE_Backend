@@ -3,7 +3,7 @@ import connectDB from './db/Mongodb.js';
 import {connectPgdb, testConnection} from './db/postgres.js';
 import { httpServer } from './app.js';
 import logger from './logger/winston.logger.js'
-import {connect,client} from './db/redis.js'
+// import {connect,client} from './db/redis.js'
 import {firebase} from "./firebase/firebase_admin.js";
 dotenv.config({
     path:'./env'
@@ -30,11 +30,11 @@ const startServer = async () => {
                 "Server is running on port: " + process.env.PORT
             )
         })
-        await connect();
-        client.set("test_key", "HomeComing", "EX", 10);
-        client.get("test_key").then((value) => {
-        console.log("Redis test key value:", value);});
-        console.log("Redis connection sucessfull");
+        // await connect();
+        // client.set("test_key", "HomeComing", "EX", 10);
+        // client.get("test_key").then((value) => {
+        // console.log("Redis test key value:", value);});
+        // console.log("Redis connection sucessfull");
     }
     catch(error){
         console.log("Database connection failed, Error while starting server", error);

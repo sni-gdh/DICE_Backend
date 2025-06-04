@@ -8,7 +8,8 @@ import {
     addNewParticipantinServer,
     removeParticipantFromServer,
     getAllServers,
-    searchAvailableUsers
+    searchAvailableUsers,
+    serachAvailableUserList
 } from "../../controllers/chatapp/server.controller.js";
 import { verifyJWT,verifyPermission } from "../../middleware/auth.middleware.js";
 import {
@@ -27,42 +28,50 @@ router.use(verifyJWT);
 
 router.route("/").get(getAllServers);
 
-router.route("/:ServerId/users").get(searchAvailableUsers);
-
-
+router.route("/:serverId/users").get(searchAvailableUsers);
+router.route("/users").get(serachAvailableUserList);
 router
   .route("/create")
-  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),createAGroupChatValidator(), validate, createServer);
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),(req, res, next) => {
+      if (typeof req.body.participants === "string") {
+        try {
+          req.body.participants = JSON.parse(req.body.participants);
+        } catch (e) {
+          req.body.participants = [];
+        }
+      }
+      next();
+    },createAGroupChatValidator(), validate, createServer);
 
 router
-  .route("/:ServerId/currentServer")
-  .get(PostgresPathVariableValidator("ServerId"), validate, getServerDetails)
+  .route("/:serverId/currentServer")
+  .get(PostgresPathVariableValidator("serverId"), validate, getServerDetails)
   .patch(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
-    PostgresPathVariableValidator("ServerId"),
+    PostgresPathVariableValidator("serverId"),
     updateGroupChatNameValidator(),
     validate,
     renameServer
   )
-  .delete(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),PostgresPathVariableValidator("ServerId"), validate, deleteServer);
+  .delete(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),PostgresPathVariableValidator("serverId"), validate, deleteServer);
 
 router
-  .route("/Participant/:ServerId/:memberId")
+  .route("/Participant/:serverId/:memberId")
   .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
-    PostgresPathVariableValidator("ServerId"),
+    PostgresPathVariableValidator("serverId"),
     PostgresPathVariableValidator("memberId"),
     validate,
     addNewParticipantinServer
   )
   .delete(
     verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
-    PostgresPathVariableValidator("ServerId"),
+    PostgresPathVariableValidator("serverId"),
     PostgresPathVariableValidator("memberId"),
     validate,
     removeParticipantFromServer
   );
 
 router
-  .route("/leave/:ServerId")
-  .delete(PostgresPathVariableValidator("ServerId"), validate, leaveServer);
+  .route("/leave/:serverId")
+  .delete(PostgresPathVariableValidator("serverId"), validate, leaveServer);
 
 export default router;

@@ -25,8 +25,12 @@ const Channel = sequelize.define('Channel', {
       localPath: ""
     }
   },
+  admin: {
+      type: DataTypes.UUID,
+      allowNull: false,
+    },
   lastThread : {
-    type : DataTypes.INTEGER,
+    type : DataTypes.UUID,
     defaultValue : undefined
   }
 });

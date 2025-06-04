@@ -31,7 +31,16 @@ router.route("/:serverId/:channelId/users").get(PostgresPathVariableValidator("s
 
 router
   .route("/:serverId/create")
-  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),PostgresPathVariableValidator('serverId'),createAGroupChatValidator(), validate,createChannel);
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),PostgresPathVariableValidator('serverId'),(req, res, next) => {
+      if (typeof req.body.participants === "string") {
+        try {
+          req.body.participants = JSON.parse(req.body.participants);
+        } catch (e) {
+          req.body.participants = [];
+        }
+      }
+      next();
+    },createAGroupChatValidator(), validate,createChannel);
 
 router
   .route("/:serverId/:channelId/currentChannel")

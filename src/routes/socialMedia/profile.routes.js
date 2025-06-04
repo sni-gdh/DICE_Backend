@@ -10,6 +10,7 @@ import {
 import {
     getLoggedInUserOrIgnore,
     verifyJWT,
+    verifyPermission
   } from '../../middleware/auth.middleware.js'
 
 // import { upload } from "../../middleware/multer.middleware.js";
@@ -20,7 +21,7 @@ import {
     createSocialProfileFacultyAndAdminValidator
   } from "../../validator/socialMedia/profile.validator.js";
 import { validate } from "../../validator/validate.js";
-  
+import {RolesEnum} from "../../constants.js"
   const router = Router();
   router.route("/u/:username").get(
     getLoggedInUserOrIgnore,
@@ -37,18 +38,18 @@ import { validate } from "../../validator/validate.js";
 
   router
     .route("/create")
-    .post(CreateSocialprofileValidator(), validate, createSocialProfile);
+    .post(verifyPermission([RolesEnum.STUDENT,RolesEnum.PRIVILEGED_STUDENT]),CreateSocialprofileValidator(), validate, createSocialProfile);
 
   router
   .route("/createFaculty")
-  .post(createSocialProfileFacultyAndAdminValidator(), validate, createSocialProfileFacultyAndAdmin);
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN]),createSocialProfileFacultyAndAdminValidator(), validate, createSocialProfileFacultyAndAdmin);
 
   router
     .route("/update")
-    .patch(UpdateSocialprofileValidator(), validate, updateSocialProfile);
+    .patch(verifyPermission([RolesEnum.STUDENT,RolesEnum.PRIVILEGED_STUDENT]),UpdateSocialprofileValidator(), validate, updateSocialProfile);
 
   router
     .route("/updateFaculty")
-    .patch(UpdateSocialprofileValidator(), validate, updateFacultySocialProfile);
+    .patch(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN]),UpdateSocialprofileValidator(), validate, updateFacultySocialProfile);
   export default router;
   

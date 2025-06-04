@@ -13,19 +13,6 @@ import { Op } from 'sequelize';
 import mongoose from "mongoose";
 import {sendNotification} from "../notification/notificaiton.controllers.js"
 
-// todo : Make reply threads. 
-const threadMessageStructure = () => {
-  return {
-    include: [
-      {
-        model: User,
-        as: 'sender',
-        attributes: ['name', 'avatar', 'univ_mail']
-      },
-    ]
-  };
-};
-
 const getAllThread = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
   
@@ -47,7 +34,13 @@ const getAllThread = asyncHandler(async (req, res) => {
       where: {
         channelId: channelId
       },
-      ...threadMessageStructure(),
+      include: [
+      {
+        model: User,
+        as: 'sender',
+        attributes: ['name', 'avatar', 'univ_mail']
+      },
+    ],
       order: [['createdAt', 'DESC']]
     });
     const messageContent = await Message.find({
@@ -108,40 +101,46 @@ const sendThread = asyncHandler(async (req, res) => {
     where: {
       id: thread.id
     },
-    ...threadMessageStructure()
+    include: [
+      {
+        model: User,
+        as: 'sender',
+        attributes: ['name', 'avatar', 'univ_mail']
+      },
+    ]
   });
 
   const messageContent = await Message.find({
-    channelId : channelId
-  });
+    channelId : channelId,
+    threadId : thread.id,
+  }).sort({createdAt : -1});
 
   const receivedMessage = { threadMessage, messageContent };
 
   if (!receivedMessage) {
     throw new ApiError(500, "Internal server error");
   }
-  const users = await ChannelUser.findAll({
-    where : {channelId : channelId},
-    attributes : ['userId'],
-    include : [
+  const users = await Channel.findByPk(channelId, {
+    include: [
       {
-        model : User,
-        attributes : ['name','token']
-      }
-    ]
+        model: User,
+        attributes: ['id', 'name', 'token'],
+        through: { attributes: [] },
+      },
+    ],
   })
-  users.forEach((user) => {
-    if (user.userId.toString() === req.user.id.toString()) return;
+  users.Users.forEach((user) => {
+    if (user.id.toString() === req.user.id.toString()) return;
     // Notification for messages
-    try{
-        sendNotification("newMessage",user.User.token,[user.User.name,channelId])
-    }catch(err){
-      console.log("Failde to send notification to user");
-    }
+    // try{
+    //     sendNotification("newMessage",user.User.token,[user.User.name,channelId])
+    // }catch(err){
+    //   console.log("Failde to send notification to user");
+    // }
     // emit the receive message event to the other participants with received message as the payload
     emitSocketEvent(
       req,
-      user.userId.toString(),
+      user.id.toString(),
       ChatEventEnum.MESSAGE_RECEIVED_EVENT,
       receivedMessage
     );
@@ -179,7 +178,7 @@ const deleteMessage = asyncHandler(async (req, res) => {
   }
 
   const message = await Message.findOne({
-    where: { threadId : thread.id }
+     threadId : thread.id 
   });
 
   if (message.attachments.length > 0) {

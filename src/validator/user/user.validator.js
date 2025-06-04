@@ -18,7 +18,6 @@ const userRegisterValidator = ()=>{
         isLength({min : 3}).
         withMessage("username must be at least 3 character long"),
         body("password").trim().notEmpty().withMessage("Password is required"),
-        body("token").notEmpty().withMessage("Invalid user role"),
     ];
 };
 const userLoginValidator = ()=>{

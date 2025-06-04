@@ -18,7 +18,7 @@ const Sociallike = sequelize.define('like',{
         defaultValue : null
     },
     likedBy:{
-        type : DataTypes.INTEGER,
+        type : DataTypes.UUID,
         required : true,
     }
 })

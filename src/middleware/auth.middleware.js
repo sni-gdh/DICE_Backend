@@ -12,7 +12,6 @@ export const verifyJWT =  asyncHandler(async(req,res,next)=> {
     
         const decodedToken = jwt.verify(token,process.env.ACCESS_TOKEN_SECRET)
         const user = await User.findByPk(decodedToken?.id)
-        // const user = await executeQuery(`select "user_id","name","univ_mail","avatar","program","course","section","join_year","created_at","update_at" from "user" where "user_id" = $1`,[decodedToken?.user_id])
         if(!user){
             throw new ApiError(401,"Invalid access token")
         }

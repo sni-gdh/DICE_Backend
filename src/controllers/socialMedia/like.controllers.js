@@ -3,7 +3,9 @@ import { Sociallike, SocialComment, SocialPost } from "../../models/socialMedia/
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import {User} from '../../models/chatapp/centeralized.models.js'
 import { sendNotification } from "../../controllers/notification/notificaiton.controllers.js";
+
 const likeDislikePost = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const post = await SocialPost.findById(postId).select({author:1});
@@ -62,11 +64,10 @@ const likeDislikePost = asyncHandler(async (req, res) => {
 const likeDislikeComment = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
 
-  const comment = await SocialComment.findById(commentId , {
-    attributes : ['postId']
-  });
-
-  const author = await SocialPost.findById(postId).select({author:1});
+  const comment = await SocialComment.findById(commentId).select({postId : 1});
+console.log(comment);
+  const author = await SocialPost.findById(comment.postId).select({author:1});
+  console.log(author);
   const user = await User.findByPk(author.author,{
     attributes : ['name',"token"]
   });

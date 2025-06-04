@@ -8,27 +8,6 @@ import { ApiResponse } from '../../utils/ApiResponse.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { removeLocalFile, getStaticFilePath, getLocalPath } from '../../utils/helpers.js';
 
-const channel_structure = () => {
-  return {
-    include: [
-      {
-        model: User,
-        attributes: ['id', 'name', 'avatar', 'univ_mail'],
-        through: { attributes: [] }
-      },
-      {
-        model: Thread,
-        include: [
-          {
-            model: User,
-            attributes: ['id', 'name', 'avatar', 'univ_mail'],
-          },
-        ],
-      },
-    ],
-  };
-};
-
 const deleteCascadeChannelMessages = async (channelId) => {
   try {
     const threads = await Thread.findAll({
@@ -145,13 +124,30 @@ const createChannel = asyncHandler(async (req, res) => {
         url: avatarUrl,
         localPath: avatarLocalPath,
       },
+      admin : user.admin
     });
 
     await channel.addUser(channelParticipants);
 
     const channelStructure = await Channel.findOne({
       where: { id: channel.id },
-      ...channel_structure()
+      include: [
+      {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      {
+        model: Thread,
+        include: [
+          {
+            model: User,
+            as:"sender",
+            attributes: ['id', 'name', 'avatar', 'univ_mail'],
+          },
+        ],
+      },
+    ]
     });
 
     if (!channelStructure) {
@@ -184,7 +180,23 @@ const getChannelDetails = asyncHandler(async (req, res) => {
 
     const channelDetails = await Channel.findOne({
       where: { id: channelId, serverId: serverId },
-      ...channel_structure()
+      include: [
+      {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      {
+        model: Thread,
+        include: [
+          {
+            model: User,
+            as:"sender",
+            attributes: ['id', 'name', 'avatar', 'univ_mail'],
+          },
+        ],
+      },
+    ]
     });
 
     if (!channelDetails) {
@@ -237,7 +249,23 @@ const renameChannel = asyncHandler(async (req, res) => {
 
     const channelDetails = await Channel.findOne({
       where: { id: channelId },
-      ...channel_structure()
+      include: [
+      {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      {
+        model: Thread,
+        include: [
+          {
+            model: User,
+            as:"sender",
+            attributes: ['id', 'name', 'avatar', 'univ_mail'],
+          },
+        ],
+      },
+    ]
     });
 
     if (!channelDetails) {
@@ -363,7 +391,23 @@ const leaveChannel = asyncHandler(async (req, res) => {
 
     const channelDetails = await Channel.findOne({
       where: { id: channelId, serverId: serverId },
-      ...channel_structure(),
+      include: [
+      {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      {
+        model: Thread,
+        include: [
+          {
+            model: User,
+            as:"sender",
+            attributes: ['id', 'name', 'avatar', 'univ_mail'],
+          },
+        ],
+      },
+    ]
     });
 
     if (!channelDetails) {
@@ -436,7 +480,23 @@ const addNewParticipantinChannel = asyncHandler(async (req, res) => {
 
     const channelDetails = await Channel.findOne({
       where: { id: channelId, serverId: serverId },
-      ...channel_structure()
+      include: [
+      {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      {
+        model: Thread,
+        include: [
+          {
+            model: User,
+            as:"sender",
+            attributes: ['id', 'name', 'avatar', 'univ_mail'],
+          },
+        ],
+      },
+    ]
     });
 
     if (!channelDetails) {
@@ -518,7 +578,23 @@ const removeParticipantFromChannel = asyncHandler(async (req, res) => {
 
     const channelDetails = await Channel.findOne({
       where: { id: channelId },
-      ...channel_structure()
+      include: [
+      {
+        model: User,
+        attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        through: { attributes: [] }
+      },
+      {
+        model: Thread,
+        include: [
+          {
+            model: User,
+            as:"sender",
+            attributes: ['id', 'name', 'avatar', 'univ_mail'],
+          },
+        ],
+      },
+    ]
     });
 
     if (!channelDetails) {

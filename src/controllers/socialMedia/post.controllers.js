@@ -541,7 +541,6 @@ const getPostById = asyncHandler(async(req,res)=>{
 
 const deletePost = asyncHandler(async(req,res)=>{
     const { postId } = req.params;
-
     const post = await SocialPost.findOneAndDelete(
         {
             _id : postId,
@@ -551,7 +550,17 @@ const deletePost = asyncHandler(async(req,res)=>{
     if(!post){
         throw new ApiError(404,"post does not exist")
     }
-
+     await SocialComment.deleteMany(
+      {
+        postId : postId
+      }
+    )
+    await Sociallike.deleteMany({
+      postId : postId
+    })
+    await SocialBookmark.deleteMany({
+      postId : postId
+    })
     const postImages = [...(post.images || [])]
     postImages.map((image)=>{
         removeLocalFile(image.localPath)

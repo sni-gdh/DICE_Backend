@@ -20,7 +20,7 @@ const addComment = asyncHandler(async (req, res) => {
     postId,
   });
   const author = await SocialPost.findById(postId).select("author");
-  const user = await User.findById(author.author,
+  const user = await User.findByPk(author.author,
     {
       attributes: [token]
     }
