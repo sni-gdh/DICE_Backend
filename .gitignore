@@ -118,5 +118,5 @@ dist
 .pnp.*
 # json
 firebase/*.json
-firebase\serviceAccountKey.json
+src/firebase/serviceAccountKey.json
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
