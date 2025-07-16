@@ -53,20 +53,7 @@ The architecture follows a layered microservice-friendly model:
 ---
 
 ## 🗂️ Project Structure
-Backend_DICE/
-├── controllers/
-├── middlewares/
-├── models/
-├── routes/
-├── services/
-├── utils/
-├── config/
-├── uploads/
-├── socket/
-├── app.js
-├── server.js
-├── .env
-└── README.md
+<pre> ```bash Backend_DICE/ ├── controllers/ ├── middlewares/ ├── models/ ├── routes/ ├── services/ ├── utils/ ├── config/ ├── uploads/ ├── socket/ ├── app.js ├── server.js ├── .env └── README.md ``` </pre>
 
 
 ---
