@@ -78,46 +78,49 @@ Backend_DICE/
 ### 🔄 Clone the Repository
 
 --> bash
- git clone https://github.com/sni-gdh/Backend_DICE.git
- cd Backend_DICE
+ - git clone https://github.com/sni-gdh/Backend_DICE.git
+ - cd Backend_DICE
 
 ---
 
 ### 📦 Install Dependencies
- npm install
+ - npm install
 
 ### 🔐 Configure Environment Variables
- Create a .env file with the following:
- PORT=8000
- ACCESS_TOKEN_SECRET=your_jwt_secret
- REFRESH_TOKEN_SECRET=your_refresh_secret
- ACCESS_TOKEN_EXPIRY=1d
- REFRESH_TOKEN_EXPIRY=7d
- POSTGRES_URI=postgres://user:pass@localhost:5432/bulletinfeed
- MONGO_URI=mongodb://localhost:27017/bulletinfeed
- MAILTRAP_SMTP_HOST=smtp.mailtrap.io
- MAILTRAP_SMTP_PORT=2525
- MAILTRAP_SMTP_USER=your_mailtrap_user 
- MAILTRAP_SMTP_PASS=your_mailtrap_pass
- FCM_SERVER_KEY=your_firebase_server_key
+Create a .env file with the following:
+ - PORT=8000
+ - ACCESS_TOKEN_SECRET=your_jwt_secret
+ - REFRESH_TOKEN_SECRET=your_refresh_secret
+ - ACCESS_TOKEN_EXPIRY=1d
+ - REFRESH_TOKEN_EXPIRY=7d
+ - POSTGRES_URI=postgres://user:pass@localhost:5432/bulletinfeed
+ - MONGO_URI=mongodb://localhost:27017/bulletinfeed
+ - MAILTRAP_SMTP_HOST=smtp.mailtrap.io
+ - MAILTRAP_SMTP_PORT=2525
+ - MAILTRAP_SMTP_USER=your_mailtrap_user 
+ - MAILTRAP_SMTP_PASS=your_mailtrap_pass
+ - FCM_SERVER_KEY=your_firebase_server_key
 
 ### ▶️ Run the Backend Server
- npm run dev
+ - npm run dev
 
 ## 📚 API Documentation
  All API routes are prefixed with /api/v1/.
+ 
  Example endpoints:
- POST   /api/v1/users/register
- POST   /api/v1/users/login
- GET    /api/v1/social-media/posts
- POST   /api/v1/chat/server/create
- POST   /api/v1/chat/server/:serverId/:channelId/Participant
+ - POST   /api/v1/users/register
+ - POST   /api/v1/users/login
+ - GET    /api/v1/social-media/posts
+ - POST   /api/v1/chat/server/create
+ - POST   /api/v1/chat/server/:serverId/:channelId/Participant
+
  Explore the routes/ and controllers/ directories for all endpoints.
 
 ---
 
 ## 🧑‍💻 Contributing
 We welcome contributions! Here's how to get started:
+ ```
  1. Fork the repository
 
  2. Create your feature branch
@@ -130,19 +133,19 @@ We welcome contributions! Here's how to get started:
  git push origin feature/your-feature
 
  5. Create a Pull Request
-
+ ```
 ---
 
 ## 🙏 Acknowledgements
- Express.js
- Sequelize
- Mongoose
- Firebase Cloud Messaging
- Mailgen
- Socket.IO
+ - Express.js
+ - Sequelize
+ - Mongoose
+ - Firebase Cloud Messaging
+ - Mailgen
+ - Socket.IO
 
 ---
 
 ## 📬 Contact
  For questions, feedback, or collaborations:
- 📧 snigdhchamoli1@gmail.com
+ - 📧 snigdhchamoli1@gmail.com
