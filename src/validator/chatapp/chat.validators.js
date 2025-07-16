@@ -10,6 +10,12 @@ const createAGroupChatValidator = ()=>{
     ];
 };
 
+const removeParticipantValidator = () =>{
+    return [
+        body("participants").isString().notEmpty().withMessage('participants id is Required')
+    ]
+}
+
 const ParticipnatValidator = ()=>{
     return [
         body("participants").isArray({
@@ -25,4 +31,4 @@ const updateGroupChatNameValidator = ()=>{
     ];
 };
 
-export {createAGroupChatValidator,updateGroupChatNameValidator,ParticipnatValidator}
+export {createAGroupChatValidator,updateGroupChatNameValidator,ParticipnatValidator,removeParticipantValidator}

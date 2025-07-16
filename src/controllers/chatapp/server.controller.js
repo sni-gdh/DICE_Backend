@@ -11,7 +11,7 @@
 // todo Add function to update avatar for server and its details, assign admin to someone before leaving the group.
 
 import { ChatEventEnum } from '../../constants.js';
-import { User, Server, Channel, Thread, Message, userServer } from '../../models/chatapp/centeralized.models.js';
+import { User, Server, Channel, Thread, Message, userServer, ChannelUser } from '../../models/chatapp/centeralized.models.js';
 import { emitSocketEvent } from '../../scoket/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ApiResponse } from '../../utils/ApiResponse.js';
@@ -107,6 +107,7 @@ const searchAvailableUsers = asyncHandler(async (req, res) => {
       include: [{
         model: User,
         attributes: ['id', 'name', 'avatar', 'univ_mail'],
+        as : "members",
         through: { attributes: [] }
       }],
     });
@@ -216,6 +217,7 @@ const getServerDetails = asyncHandler(async (req, res) => {
         {
           model: User,
           attributes: ["id", "name", "univ_mail","avatar"],
+          as : "members",
           through: { attributes: [] }
         },
         {
@@ -263,7 +265,7 @@ const renameServer = asyncHandler(async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ["id", "name", "univ_mail"],
+          attributes: ["id", "name", "univ_mail","avatar"],
           through: { attributes: [] }
         },
         {
@@ -403,7 +405,16 @@ const leaveServer = asyncHandler(async (req, res) => {
 
 const addNewParticipantinServer = asyncHandler(async (req, res) => {
   try {
-    const { serverId, memberId } = req.params;
+    const { serverId } = req.params;
+    const {participants} = req.body;
+
+    if (participants.includes(req.user.id.toString())) {
+      throw new ApiError(400, "Member array should not contain the server creator");
+    }
+    if (participants.length === 0) {
+      throw new ApiError(400, "All fields are required");
+    }
+
 
     const server = await Server.findOne({
       where: { id: serverId }
@@ -417,28 +428,32 @@ const addNewParticipantinServer = asyncHandler(async (req, res) => {
       throw new ApiError(403, "Only admin can add participants");
     }
 
-    const user = await User.findByPk(memberId);
+    const user = await User.findAll({
+      where : {id : { [Op.in] : participants } }
+    });
 
-    if (!user) {
-      throw new ApiError(400, "User does not exist");
+    if (user.length !== participants.length) {
+      throw new ApiError(400, "One or more participants are not valid users");
     }
-
+    const newMembers = []
+    for (const memberId of participants) {
     const count = await userServer.count({
       where: { userId: memberId, serverId: serverId }
     });
 
     if (count > 0) {
-      throw new ApiError(400, "Member exists in the server");
+      throw new ApiError(400, `Member with id ${memberId} exists in the server`);
     }
-
-    await server.addUsers(memberId);
+    newMembers.push(memberId)
+    }
+    await server.addUsers(newMembers);
 
     const serverDetails = await Server.findOne({
       where: { id: serverId },
       include: [
         {
           model: User,
-          attributes: ["id", "name", "univ_mail"],
+          attributes: ["id", "name", "univ_mail","avatar"],
           through: { attributes: [] }
         },
         {
@@ -451,16 +466,19 @@ const addNewParticipantinServer = asyncHandler(async (req, res) => {
       throw new ApiError(500, "Internal server error");
     }
 
-    emitSocketEvent(
+    newMembers.forEach((memberId) => {
+      emitSocketEvent(
       req,
       memberId,
       ChatEventEnum.NEW_CHAT_EVENT,
       serverDetails
-    );
+      );
+    });
+    
 
     return res
       .status(200)
-      .json(new ApiResponse(200, serverDetails, "Participant added successfully"));
+      .json(new ApiResponse(200, serverDetails, "Participant(s) added successfully"));
   } catch (error) {
     console.log("Error while adding new participant in server", error);
     throw new ApiError(500, "Internal Server Error while adding participant");
@@ -498,6 +516,24 @@ const removeParticipantFromServer = asyncHandler(async (req, res) => {
     }
 
     await server.removeUser(memberId);
+    const channels = await Channel.findAll({
+        where: {
+          serverId: serverId
+        }
+      });
+
+      for (const ch of channels) {
+        const isMember = await ChannelUser.findOne({
+          where: {
+            userId: memberId,
+            channelId: ch.id
+          }
+        });
+
+        if (isMember) {
+          await ch.removeUser(memberId);
+        }
+      }
 
     const serverDetails = await Server.findOne({
       where: { id: serverId },
@@ -536,8 +572,11 @@ const removeParticipantFromServer = asyncHandler(async (req, res) => {
 const getAllServers = asyncHandler(async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      include: Server,
-      attributes: ['id', 'name', 'avatar', 'univ_mail']
+      attributes: ['id', 'name', 'avatar', 'univ_mail'],
+      include: [{
+        model: Server,
+        as : "joinedServers"
+      }]
     });
 
     if (!user) {

@@ -6,7 +6,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { getMongoosePaginationOptions } from "../../utils/helpers.js";
 import { sendNotification } from "../notification/notificaiton.controllers.js";
-
+import { Op } from "sequelize";
 
 const followUnFollowUser = asyncHandler(async (req, res) => {
   const { toBeFollowedUserId } = req.params;
@@ -22,9 +22,11 @@ const followUnFollowUser = asyncHandler(async (req, res) => {
   }
 
   const isAlreadyFollowing = await SocialFollow.findOne({
+  where: {
     followerId: req.user.id,
     followeeId: toBeFollowedUser.id,
-  });
+  }
+});
 
   if (isAlreadyFollowing) {
     await SocialFollow.deleteOne({
@@ -352,10 +354,43 @@ const getFolloweeListByUserName = asyncHandler(async (req, res) => {
   );
 });
 
+const getSuggestedUsers = asyncHandler(async (req, res) => {
+  const followees = await SocialFollow.aggregate([
+    {
+      $match: {
+        followerId: String(req.user.id),
+      },
+    },
+    {
+      $project: {
+        followeeId: 1,
+        _id: 0
+      },
+    },
+  ]);
+
+  const followeeIds = followees.map(f => f.followeeId);
+
+  followeeIds.push(req.user.id);
+  const users = await User.findAll({
+    where: {
+      id: {
+        [Op.notIn]: followeeIds,
+      },
+    },
+    attributes: ['id', 'name', 'avatar'], 
+    limit: 10,
+  });
+
+  return res.status(200).json(new ApiResponse(200, users, "Suggested users fetched"));
+});
+
+
 export {
   followUnFollowUser,
   acceptAndRejectRequest,
   getListRequest,
   getFollowersListByUserName,
   getFolloweeListByUserName,
+  getSuggestedUsers,
 };

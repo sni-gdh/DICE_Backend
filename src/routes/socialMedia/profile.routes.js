@@ -5,7 +5,8 @@ import {
     updateSocialProfile,
     createSocialProfile,
     createSocialProfileFacultyAndAdmin,
-    updateFacultySocialProfile
+    updateFacultySocialProfile,
+    getProfileByUserId
 } from '../../controllers/socialMedia/profile.controllers.js'
 import {
     getLoggedInUserOrIgnore,
@@ -22,6 +23,7 @@ import {
   } from "../../validator/socialMedia/profile.validator.js";
 import { validate } from "../../validator/validate.js";
 import {RolesEnum} from "../../constants.js"
+import { PostgresPathVariableValidator } from '../../validator/common/db.validators.js';
   const router = Router();
   router.route("/u/:username").get(
     getLoggedInUserOrIgnore,
@@ -30,12 +32,20 @@ import {RolesEnum} from "../../constants.js"
     getProfileByUserName
   );
   
+  router.route("/u/:userId").get(
+    getLoggedInUserOrIgnore,
+    PostgresPathVariableValidator("userId"),
+    validate,
+    getProfileByUserId
+  )
+
   router.use(verifyJWT);
   
   router
   .route("/")
   .get(getMySocialProfile);
 
+   
   router
     .route("/create")
     .post(verifyPermission([RolesEnum.STUDENT,RolesEnum.PRIVILEGED_STUDENT]),CreateSocialprofileValidator(), validate, createSocialProfile);

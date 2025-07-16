@@ -345,44 +345,64 @@ const removePostImage = asyncHandler(async(req,res)=>{
     );
 });
 
-const getAllPosts = asyncHandler(async(req,res)=>{
-    const {page = 1,limit = 10} = req.query;
-    const paginatedPosts = await SocialPost.aggregatePaginate(
-      [
-        {
-          $match: {
-            author: String(req.user.id),
-          },
-        },
-        {
-          $sort: { createdAt: -1 },
-        },
-        
-      ],
-        getMongoosePaginationOptions({
-          page,
-          limit,
-          customLabels: {
-            totalDocs: "totalPosts",
-            docs: "posts",
-          },
+const getAllPosts = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
 
-        })
-      );
-      if(!paginatedPosts.posts.length){
-        throw new ApiError(404,"No posts found");
-      }
-    const enrichedPosts = await postAggregation(req,paginatedPosts.posts);
-    return res.status(200).
-    json(
-        new ApiResponse(200,
-            {
-                ...paginatedPosts,
-                posts : enrichedPosts,
-            },"Posts fetched successfully"
-        )
+  const followees = await SocialFollow.aggregate([
+    {
+      $match: {
+        followerId: String(req.user.id),
+      },
+    },
+    {
+      $project: {
+        followeeId: 1,
+        _id: 0,
+      },
+    },
+  ]);
+
+  const followeeIds = followees.map(f => f.followeeId);
+  followeeIds.push(String(req.user.id));
+
+  const paginatedPosts = await SocialPost.aggregatePaginate(
+    [
+      {
+        $match: {
+          author: { $in: followeeIds },
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+    ],
+    getMongoosePaginationOptions({
+      page,
+      limit,
+      customLabels: {
+        totalDocs: "totalPosts",
+        docs: "posts",
+      },
+    })
+  );
+
+  if (!paginatedPosts.posts.length) {
+    throw new ApiError(404, "No posts found");
+  }
+  const enrichedPosts = await postAggregation(req, paginatedPosts.posts);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        ...paginatedPosts,
+        posts: enrichedPosts,
+      },
+      "Posts fetched successfully"
     )
+  );
 });
+
 
 const getPostsByUsername = asyncHandler(async(req,res)=>{
     const {page = 1,limit  = 10} = req.query;
@@ -716,6 +736,32 @@ const getFacultyAdminAndPrivilegedPosts = asyncHandler(async (req, res) => {
     );
 });
 
+const getPostByOwnerId = asyncHandler(async (req,res) => {
+  const {adminId} = req.params
+  const post = await SocialPost.aggregate([
+        {
+            $match : {
+                author : adminId
+            }
+        },
+        {
+          $sort: {
+            createdAt: -1
+          }
+        }
+    ]);
+    if(!post){
+        throw new ApiError(404,"Post does not exist")
+    }
+    const enrichedPost = await postAggregation(req,post);
+    return res.status(200).
+    json(
+        new ApiResponse(200,
+                enrichedPost,
+            "post fetched successfully"
+        )
+    )
+})
 
 export {
     createPost,
@@ -729,5 +775,6 @@ export {
     deletePost,
     getPostsByTag,
     getStudentPosts,
-    getFacultyAdminAndPrivilegedPosts
+    getFacultyAdminAndPrivilegedPosts,
+    getPostByOwnerId
 }

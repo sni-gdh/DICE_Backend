@@ -11,7 +11,8 @@ import {
   removePostImage,
   updatePost,
   getStudentPosts,
-  getFacultyAdminAndPrivilegedPosts
+  getFacultyAdminAndPrivilegedPosts,
+  getPostByOwnerId
 } from "../../controllers/socialMedia/post.controllers.js";
 import {
   getLoggedInUserOrIgnore,
@@ -26,7 +27,7 @@ import {
   usernamePathVariableValidator,
 } from "../../validator/socialMedia/post.validator.js";
 import { validate } from "../../validator/validate.js";
-import { mongoIdPathVariableValidator } from "../../validator/common/db.validators.js";
+import { mongoIdPathVariableValidator, PostgresPathVariableValidator } from "../../validator/common/db.validators.js";
 
 const router = Router();
 router.use(verifyJWT)
@@ -57,6 +58,13 @@ router
     validate,
     getPostsByUsername
   );
+
+  router.route("/get/:adminId")
+  .get(
+    PostgresPathVariableValidator("adminId"),
+    validate,
+    getPostByOwnerId
+  )
 
 router
   .route("/get/t/:tag")

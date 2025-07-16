@@ -14,6 +14,7 @@ import {
 import { verifyJWT,verifyPermission } from "../../middleware/auth.middleware.js";
 import {
   createAGroupChatValidator,
+  ParticipnatValidator,
   updateGroupChatNameValidator,
 } from "../../validator/chatapp/chat.validators.js";
 import { PostgresPathVariableValidator,mongoIdPathVariableValidator } from "../../validator/common/db.validators.js";
@@ -32,7 +33,8 @@ router.route("/:serverId/users").get(searchAvailableUsers);
 router.route("/users").get(serachAvailableUserList);
 router
   .route("/create")
-  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),(req, res, next) => {
+  .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),upload.single("avatar"),
+  (req, res, next) => {
       if (typeof req.body.participants === "string") {
         try {
           req.body.participants = JSON.parse(req.body.participants);
@@ -55,13 +57,14 @@ router
   .delete(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),PostgresPathVariableValidator("serverId"), validate, deleteServer);
 
 router
-  .route("/Participant/:serverId/:memberId")
+  .route("/Participant/:serverId")
   .post(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("serverId"),
-    PostgresPathVariableValidator("memberId"),
+    ParticipnatValidator(),
     validate,
     addNewParticipantinServer
   )
+router.route('/Participant/:serverId/:memberId')
   .delete(
     verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("serverId"),

@@ -14,12 +14,14 @@ import { verifyJWT,verifyPermission } from "../../middleware/auth.middleware.js"
 import {
   createAGroupChatValidator,
   updateGroupChatNameValidator,
-  ParticipnatValidator
+  ParticipnatValidator,
+  removeParticipantValidator
 } from "../../validator/chatapp/chat.validators.js";
 import {PostgresPathVariableValidator } from "../../validator/common/db.validators.js";
 import { validate } from "../../validator/validate.js";
 import {upload} from "../../middleware/multer.middleware.js"
 import { RolesEnum } from "../../constants.js"; 
+import { ConnectionPoolMonitoringEvent } from "mongodb";
 const router = Router();
 
 router.use(verifyJWT);
@@ -63,10 +65,11 @@ router
     validate,
     addNewParticipantinChannel
   )
+router.route("/:serverId/:channelId/Participant/:participantId")
   .delete(verifyPermission([RolesEnum.FACULTY,RolesEnum.ADMIN,RolesEnum.PRIVILEGED_STUDENT]),
     PostgresPathVariableValidator("serverId"),
     PostgresPathVariableValidator("channelId"),
-    ParticipnatValidator(),
+    PostgresPathVariableValidator("participantId"),
     validate,
     removeParticipantFromChannel
   );

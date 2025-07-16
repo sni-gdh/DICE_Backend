@@ -10,8 +10,8 @@ import {SocialFacultyprofile } from '../socialMedia/SocialFacultyprofile.models.
 User.belongsToMany(Channel,{through : ChannelUser,foreignKey:"userId" ,otherKey : "channelId"})
 Channel.belongsToMany(User, { through: ChannelUser , foreignKey:"channelId" ,otherKey : "userId"});
 
-User.belongsToMany(Server,{through : userServer,foreignKey:"userId",otherKey:"serverId"});
-Server.belongsToMany(User,{through : userServer,foreignKey:"serverId",otherKey:"userId"});
+User.belongsToMany(Server,{through : userServer,foreignKey:"userId",otherKey:"serverId" , as : "joinedServers"});
+Server.belongsToMany(User,{through : userServer,foreignKey:"serverId",otherKey:"userId", as : "members"});
 
 // One to Many relation.
 User.hasMany(Server,{foreignKey : "admin"})

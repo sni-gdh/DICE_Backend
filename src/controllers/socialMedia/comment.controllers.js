@@ -22,14 +22,14 @@ const addComment = asyncHandler(async (req, res) => {
   const author = await SocialPost.findById(postId).select("author");
   const user = await User.findByPk(author.author,
     {
-      attributes: [token]
+      attributes: ["token"]
     }
   )
   if(!user || !user.token){
     throw new ApiError(404,"User or token not found");
   }
   // try{
-  //   // sendNotification("newComment",user.token,[req.user?.name , postId])
+  //   sendNotification("newComment",user.token,[req.user?.name , postId])
   // }catch(err){
   //   console.log("Error while sending notification for comment");
   // }

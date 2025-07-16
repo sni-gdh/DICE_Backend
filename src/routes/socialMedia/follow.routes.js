@@ -4,7 +4,8 @@ import {
   getFollowersListByUserName,
   getFolloweeListByUserName,
   acceptAndRejectRequest,
-  getListRequest
+  getListRequest,
+  getSuggestedUsers
 } from "../../controllers/socialMedia/follow.controllers.js";
 import {
   getLoggedInUserOrIgnore,
@@ -34,5 +35,8 @@ get(getListRequest);
 router
   .route("/list/following/:username")
   .get(getFolloweeListByUserName);
+
+router.route("/list/Suggested/")
+.get(getSuggestedUsers)
 
 export default router;

@@ -268,11 +268,31 @@ const updateFacultySocialProfile = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, profile, "User profile updated successfully"));
 });
 
+const getProfileByUserId = asyncHandler(async (req,res)=>{
+    const { userId } = req.params;
+  const user = await User.findOne({
+    where: { id : userId },
+    attributes: ["id"],
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User does not exist");
+  }
+
+  const userProfile = await getUserSocialProfile(user.id, req);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, userProfile, "User profile fetched successfully")
+    );
+})
 export {
   getMySocialProfile,
   getProfileByUserName,
   updateSocialProfile,
   createSocialProfile,
   createSocialProfileFacultyAndAdmin,
-  updateFacultySocialProfile
+  updateFacultySocialProfile,
+  getProfileByUserId
 };
